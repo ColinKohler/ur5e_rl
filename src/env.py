@@ -9,7 +9,6 @@ class Env(object):
   def __init__(self, workspace, heightmap_size):
     rospy.init_node('rl_env')
 
-
     self.workspace = workspace
     self.heightmap_size = heightmap_size
 
@@ -22,6 +21,7 @@ class Env(object):
 
     return self.getObservation()
 
+  # TODO: Take agent action and convert to pose to move the ur5 ee to along with the gripper command
   def step(self, action):
     pass
 
