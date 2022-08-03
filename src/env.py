@@ -18,6 +18,7 @@ class Env(object):
   def reset(self):
     self.ur5.moveToHome()
     self.ur5.openGripper()
+    self.ur5.resetLoadCell()
 
     return self.getObservation()
 

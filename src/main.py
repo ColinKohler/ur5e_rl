@@ -1,6 +1,6 @@
 import rospy
 
-from srv.env import Env
+from src.env import Env
 
 if __name__ == '__main__':
   rospy.init_node('robalto_rl')

@@ -14,7 +14,7 @@ class TFProxy(object):
 
     pos = [translation.x, translation.y, translation.z]
     quat = [rotation.x, rotation.y, rotation.z, rotation.w]
-    T = tf.transformation.quaternion_matrix(quat)
+    T = tf.transformations.quaternion_matrix(quat)
     T[:3,3] = pos
 
     return T
