@@ -1,7 +1,7 @@
 import rospy
 
-class HydrostaticGripper(object):
-  ''' Interface for Peter's gripper.
+class Gripper(object):
+  ''' Interface for gripper.
 
   Args:
     p_min (float): The min joint angle for the gripper.

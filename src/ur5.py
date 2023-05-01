@@ -1,7 +1,7 @@
 import rospy
 import tf
 
-from src.hydrostatic_gripper import HydrostaticGripper
+from src.gripper import Gripper
 from src.tf_proxy import TFProxy
 from src.utils import Pose
 
@@ -11,19 +11,21 @@ class UR5(object):
   Converts higher level commands to the low lever controller.
   '''
   def __init__(self):
-    # TODO: Update this with the correct service name and message
-    self.pose_control = rospy.ServiceProxy('pose_control', POSE_CONTROL)
-    self.joint_control = rospy.ServiceProxy('joint_control', JOINT_CONTROL)
+    self.pose_cmd_pub = rospy.Publisher('compliant_controller/pose_command', PoseStamped, queue_size=1)
+    self.ee_pose_sub = rospy.Subscriber('compliant_controller/ee_pose', PoseStamped, eePoseCallback)
+    self.ee_pose = None
 
     # TODO: These are from the old UR5 we might need something different
     self.home_joint_pos = [-0.22163755, -1.48887378,  1.81927061, -1.90511448, -1.5346511, 1.3408314]
 
-    self.gripper = HydrostaticGripper()
+    self.gripper = Gripper()
     self.gripper.reset()
     self.gripper.activate()
 
-    self.holding_state = 0
     self.tf_proxy = TFProxy()
+
+  def eePoseCallback(self, data):
+    self.ee_pose = data
 
   def moveToPose(self, pose):
     ''' Move the end effector to the specified pose.
@@ -34,24 +36,7 @@ class UR5(object):
     Returns:
       bool: True if movement was successful, False otherwise
     '''
-    req = POSE_CONTROL()
-    resp = self.pose_control.publish(req)
-
-    return resp
-
-  def moveToJoint(self, joint):
-    ''' Move the robot to the specified joint positions.
-
-    Args:
-      - joint (list[float]): Joint positions to set the robot to.
-
-    Returns:
-      bool: True if movement was successful, False otherwise
-    '''
-    req = JOINT_CONTROL()
-    resp = self.joint_control.publish(req)
-
-    return resp
+    ee_pose_pub.publish(pose.getPoseStamped())
 
   def moveToHome(self):
     ''' Moves the robot to the home position.
@@ -62,27 +47,17 @@ class UR5(object):
     return self.moveToJoint(self.home_joint_pos)
 
   def getEEPose(self):
-    ''' Get the current pose of the end effector.
-
-    Position: [x, y, z] | Orientation: [x, y, z, q]
-
-    Returns:
-      (list[float], list[float]): (End effector position, end effector orientation)
-    '''
-    # TODO: Update 'tool_frame' to what ever the gripper frame is
-    T = self.tf_proxy.lookupTransform('base', 'tool_frame')
-    pos = T[:3, 3]
-    rot = tf.trnasformations.euler_from_matrix(T)
-
+    ''' Get the current pose of the end effector. '''
+    pos = self.ee_pose.pose.position
+    rot = self.ee_pose.pose.orientation
     return Pose(*pos, *rot)
 
   def openGripper(self):
-    ''' Fully open the gripper.
-
-    Returns:
-
-    '''
+    ''' Fully open the gripper. '''
     self.gripper.openGripper()
+
+  def getOpenRatio(self):
+    return None
 
   def controlGripper(self, p):
     ''' Send a position command to the gripper.
