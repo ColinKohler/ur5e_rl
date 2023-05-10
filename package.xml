@@ -2,7 +2,7 @@
 <package format="2">
   <name>robalto_rl</name>
   <version>0.0.0</version>
-  <description></description>
+  <description>ur5e rl env</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <maintainer email="kohler.c@northeastern.edu">Colin Kohler</maintainer>
