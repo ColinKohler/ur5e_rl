@@ -5,14 +5,20 @@ import scipy.ndimage
 from src.ur5 import UR5
 
 class Env(object):
-  def __init__(self, workspace, heightmap_size):
+  def __init__(self, workspace, vision_size):
     rospy.init_node('ur5e_rl_env')
 
     self.workspace = workspace
-    self.heightmap_size = heightmap_size
+    self.heightmap_size = vision_size
     self.obs_type = ['vision', 'force', 'proprio']
 
     self.ur5e = UR5e()
+
+  def wrenchCallback(self, data):
+    pass
+
+  def visionCallback(self, data):
+    pass
 
   def reset(self):
     self.ur5e.moveToHome()
