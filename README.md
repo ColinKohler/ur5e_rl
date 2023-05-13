@@ -1,6 +1,8 @@
 # TODO:
-  - Setup RGB-D sensor (StructIO?): Need clamps and angled sensor mount 
-  - Calibrate sensor and add TF frame
-  - Test compliant controller on ur5e
-  - Generate dataset of expert block centering w/full force/vision/proprio modalities
-  - Write RL hookups for controling arm w/closed loop control
+  - Setup RGB-D sensor: Need clamps and angled sensor mount 
+  - Run test script and ensure action stepping works
+  - Implement reseting to home pose w/joint command to compliant controller
+  - Test force observations (frame, zero'ing, etc)
+  - Fill in bones for gripper control and vision sensor
+  - Block reaching test
+  - Add calibrated sensor we can use to test for RL termination/reward

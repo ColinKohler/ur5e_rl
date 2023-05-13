@@ -20,9 +20,12 @@ class Env(object):
     self.rgbd_sensor = RGBDSensor(self.vision_size)
     self.force_sensor = ForceSensor(self.force_obs_len)
 
+    self.num_steps = 0
+
   def reset(self):
     self.ur5e.reset()
     self.force_sensor.reset()
+    self.num_steps = 0
 
     #return self.getObservation()
     return None
@@ -33,6 +36,7 @@ class Env(object):
     target_pose = self.getActionPose(action)
     self.ur5e.moveToPose(target_pose)
     self.ur5e.sendGripperCmd(p)
+    self.num_steps += 1
 
     #obs = self.getObservation()
     obs = None
@@ -79,7 +83,6 @@ class Env(object):
         obs.append(self.getProprioObservation())
     return obs
 
-  # TODO: These need to be defined by sub-classes for specific domains
   def checkTermination(self):
     return None
 
