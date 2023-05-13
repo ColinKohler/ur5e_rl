@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>robalto_rl</name>
+  <name>ur5e_rl</name>
   <version>0.0.0</version>
   <description>ur5e rl env</description>
 
