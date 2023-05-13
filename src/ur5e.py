@@ -5,24 +5,28 @@ from src.gripper import Gripper
 from src.tf_proxy import TFProxy
 from src.utils import Pose
 
-class UR5(object):
-  ''' UR5 robotic arm interface.
+class UR5e(object):
+  ''' UR5e robotic arm interface.
 
   Converts higher level commands to the low lever controller.
   '''
   def __init__(self):
-    self.pose_cmd_pub = rospy.Publisher('compliant_controller/pose_command', PoseStamped, queue_size=1)
-    self.ee_pose_sub = rospy.Subscriber('compliant_controller/ee_pose', PoseStamped, eePoseCallback)
+    self.pose_cmd_pub = rospy.Publisher('pose_command', PoseStamped, queue_size=1)
+    self.ee_pose_sub = rospy.Subscriber('ee_pose', PoseStamped, eePoseCallback)
     self.ee_pose = None
 
-    # TODO: These are from the old UR5 we might need something different
-    self.home_joint_pos = [-0.22163755, -1.48887378,  1.81927061, -1.90511448, -1.5346511, 1.3408314]
+    # TODO: Update these
+    self.home_joint_pos = (np.pi/180)*np.array([90.0, -120.0, 90.0, -77.0, -90.0, 180.0])
 
     self.gripper = Gripper()
     self.gripper.reset()
     self.gripper.activate()
 
     self.tf_proxy = TFProxy()
+
+  def reset(self):
+    self.moveToHome()
+    self.openGripper()
 
   def eePoseCallback(self, data):
     self.ee_pose = data
@@ -59,7 +63,7 @@ class UR5(object):
   def getOpenRatio(self):
     return None
 
-  def controlGripper(self, p):
+  def sendGripperCmd(self, p):
     ''' Send a position command to the gripper.
 
     Args:

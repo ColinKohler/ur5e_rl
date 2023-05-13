@@ -30,7 +30,6 @@ class RG2Gripper(object):
     '''
     self.state = msg
 
-  # TODO: We need these two functions w/the robotiq gripper so we might not need them.
   def reset(self):
     ''' Reset the gripper. '''
     pass
@@ -45,9 +44,9 @@ class RG2Gripper(object):
     Args:
       pos (float): The postion to set the gripper to (range [0,1])
     '''
-    cmd = GripperCmd()
-    cmd.position = (1 - pos) * self.p_max
-    self.control_pub.publish(cmd)
+    #cmd = GripperCmd()
+    #cmd.position = (1 - pos) * self.p_max
+    #self.control_pub.publish(cmd)
 
     # TODO: We want to return a bool when the motion is done?
     return None

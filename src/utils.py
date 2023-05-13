@@ -6,24 +6,26 @@ class Pose(object):
   ''' Utility class to convert various types of pose formats. '''
   def __init__(self, x, y, z, rx, ry, rz, rw=None):
     self.frame = None #TODO: Update this
-    self.x, self.y, self.z = x, y, z
+    self.pos = [x, y, z]
 
     if rw:
-      self.rx, self.ry, self.rz = tf.transformations.euler_from_quaternion(rx, ry, rz, rw)
+      self.rot = tf.transformations.euler_from_quaternion(rx, ry, rz, rw)
     else:
-      self.rx, self.ry, self.rz = rx, ry, rz
+      self.rot = rx, ry, rz
 
   def getPoseMatrix(self):
-    return tf.transformations.matrix_from_euler(self.x, self.y, self.z, self.rz, self.ry, self.rz)
+    return tf.transformations.matrix_from_euler(
+      self.pos[0], self.pos[1], self.pos[2], self.rot[0], self.rot[1], self.rot[2]
+    )
 
   def getPosition(self):
-    return self.x, self.y, self.z
+    return self.pos
 
   def getEulerOrientation(self):
-    return self.rx, self.ry, self.rz
+    return self.rot
 
   def getOrientationQuaternion(self):
-    return tf.transformations.quaternion_from_euler(self.rx, self.ry, self.rz)
+    return tf.transformations.quaternion_from_euler(*self.rot)
 
   def getPoseStamped(self):
     return PoseStamped(
