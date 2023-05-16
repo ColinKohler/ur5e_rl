@@ -5,8 +5,8 @@ class RGBDSensor(object):
   def __init__(self, vision_size):
     self.vision_size = vision_size
 
-    self.rgb_sub = rospy.Subscriber('', Image, rgbCallback)
-    self.depth_sub = rospy.Subscriber('', Image, depthCallback)
+    #self.rgb_sub = rospy.Subscriber('', Image, self.rgbCallback)
+    #self.depth_sub = rospy.Subscriber('', Image, self.depthCallback)
 
   def rgbCallback(self, data):
     self.rgb_data = data.data.reshape((3, self.vision_size, self.vision_size))

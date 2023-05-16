@@ -1,5 +1,8 @@
 import rospy
 import tf
+import numpy as np
+
+from geometry_msgs.msg import PoseStamped
 
 from src.gripper import Gripper
 from src.tf_proxy import TFProxy
@@ -12,21 +15,22 @@ class UR5e(object):
   '''
   def __init__(self):
     self.pose_cmd_pub = rospy.Publisher('pose_command', PoseStamped, queue_size=1)
-    self.ee_pose_sub = rospy.Subscriber('ee_pose', PoseStamped, eePoseCallback)
+    self.ee_pose_sub = rospy.Subscriber('ee_pose', PoseStamped, self.eePoseCallback)
     self.ee_pose = None
 
     # TODO: Update these
     self.home_joint_pos = (np.pi/180)*np.array([90.0, -120.0, 90.0, -77.0, -90.0, 180.0])
 
-    self.gripper = Gripper()
-    self.gripper.reset()
-    self.gripper.activate()
+    #self.gripper = Gripper()
+    #self.gripper.reset()
+    #self.gripper.activate()
 
     self.tf_proxy = TFProxy()
 
   def reset(self):
-    self.moveToHome()
-    self.openGripper()
+    pass
+    #self.moveToHome()
+    #self.openGripper()
 
   def eePoseCallback(self, data):
     self.ee_pose = data
@@ -40,7 +44,7 @@ class UR5e(object):
     Returns:
       bool: True if movement was successful, False otherwise
     '''
-    ee_pose_pub.publish(pose.getPoseStamped())
+    self.pose_cmd_pub.publish(pose.getPoseStamped())
 
   def moveToHome(self):
     ''' Moves the robot to the home position.
@@ -54,7 +58,7 @@ class UR5e(object):
     ''' Get the current pose of the end effector. '''
     pos = self.ee_pose.pose.position
     rot = self.ee_pose.pose.orientation
-    return Pose(*pos, *rot)
+    return Pose(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w)
 
   def openGripper(self):
     ''' Fully open the gripper. '''

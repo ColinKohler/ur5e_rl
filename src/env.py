@@ -34,8 +34,9 @@ class Env(object):
     p, x, y, z, rot = action
 
     target_pose = self.getActionPose(action)
+    print(target_pose.getPoseStamped())
     self.ur5e.moveToPose(target_pose)
-    self.ur5e.sendGripperCmd(p)
+    #self.ur5e.sendGripperCmd(p)
     self.num_steps += 1
 
     #obs = self.getObservation()
@@ -48,19 +49,21 @@ class Env(object):
   def getActionPose(self, action):
     p, x, y, z, rot = action
     current_pose = self.ur5e.getEEPose()
-    target_pose = copy.copy(target_pose)
+    target_pose = copy.copy(current_pose)
 
     target_pose.pos = np.array(current_pose.pos) + np.array([x, y, z])
-    target_pose.rot[2] = current_pose.rot[2] + rot
-    target_pose.pos[0] = np.clip(
-      target_pose.pos[0], self.workspace[0, 0], self.workspace[0, 1]
-    )
-    target_pose.pos[1] = np.clip(
-      target_pose.pos[1], self.workspace[1, 0], self.workspace[1, 1]
-    )
-    target_pose.pos[2] = np.clip(
-      target_pose.pos[2], self.workspace[2, 0], self.workspace[2, 1]
-    )
+    target_pose.rot = [current_pose.rot[0], current_pose.rot[1], current_pose.rot[2] + rot]
+
+    # TODO: Add clipping back in once frame junk is workeded out
+    #target_pose.pos[0] = np.clip(
+    #  target_pose.pos[0], self.workspace[0, 0], self.workspace[0, 1]
+    #)
+    #target_pose.pos[1] = np.clip(
+    #  target_pose.pos[1], self.workspace[1, 0], self.workspace[1, 1]
+    #)
+    #target_pose.pos[2] = np.clip(
+    #  target_pose.pos[2], self.workspace[2, 0], self.workspace[2, 1]
+    #)
 
     return target_pose
 

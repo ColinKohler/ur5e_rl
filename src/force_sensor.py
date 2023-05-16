@@ -1,4 +1,6 @@
 import rospy
+import numpy as np
+
 from geometry_msgs.msg import WrenchStamped
 
 class ForceSensor(object):
@@ -7,7 +9,7 @@ class ForceSensor(object):
 
     self.initial_force = None
     self.force_history = list()
-    self.wrench_sub = rospy.Subscriber('wrench', WrenchStamped, wrenchCallback)
+    self.wrench_sub = rospy.Subscriber('wrench', WrenchStamped, self.wrenchCallback)
 
   # TODO: Check frame for this message, need to be in global (world) frame
   # TODO: Test force zero'ing w/the initial force
