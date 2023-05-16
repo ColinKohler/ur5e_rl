@@ -1,8 +1,12 @@
 import rospy
 import tf
 import numpy as np
+import copy
+import time
+from scipy.interpolate import InterpolatedUnivariateSpline
 
 from geometry_msgs.msg import PoseStamped
+from sensor_msgs.msg import JointState
 
 from src.gripper import Gripper
 from src.tf_proxy import TFProxy
@@ -14,45 +18,74 @@ class UR5e(object):
   Converts higher level commands to the low lever controller.
   '''
   def __init__(self):
+    self.joint_cmd_pub = rospy.Publisher('joint_command', JointState, queue_size=1)
     self.pose_cmd_pub = rospy.Publisher('pose_command', PoseStamped, queue_size=1)
     self.ee_pose_sub = rospy.Subscriber('ee_pose', PoseStamped, self.eePoseCallback)
+    self.joint_sub = rospy.Subscriber("joint_states", JointState, self.jointStateCallback)
+
     self.ee_pose = None
+    self.joint_state = None
+    self.joint_names = ['shoulder_lift_joint', 'shoulder_pan_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
+    self.joint_positions = np.zeros(6)
+    self.joint_reorder = [2,1,0,3,4,5]
 
     # TODO: Update these
-    self.home_joint_pos = (np.pi/180)*np.array([90.0, -120.0, 90.0, -77.0, -90.0, 180.0])
+    self.home_joint_pos = (np.pi/180)*np.array([90.0, -120.0, 90.0, -60.0, -90.0, 180.0])
+    self.home_joint_state = JointState(
+      position=self.home_joint_pos,
+      velocity=[0] * 6
+    )
 
-    #self.gripper = Gripper()
+    self.gripper = Gripper()
     #self.gripper.reset()
     #self.gripper.activate()
 
     self.tf_proxy = TFProxy()
 
   def reset(self):
-    pass
-    #self.moveToHome()
+    self.moveToHome()
     #self.openGripper()
 
   def eePoseCallback(self, data):
     self.ee_pose = data
+
+  def jointStateCallback(self, data):
+    self.joint_positions[self.joint_reorder] = data.position
+    self.joint_state = data
 
   def moveToPose(self, pose):
     ''' Move the end effector to the specified pose.
 
     Args:
       - pose (utils.Pose): Pose to move the end effector to.
-
-    Returns:
-      bool: True if movement was successful, False otherwise
     '''
     self.pose_cmd_pub.publish(pose.getPoseStamped())
 
   def moveToHome(self):
-    ''' Moves the robot to the home position.
+    ''' Moves the robot to the home position. '''
+    current_joint_pos = copy.copy(self.joint_positions)
+    target_joint_pos = self.home_joint_pos
 
-    Returns:
-      bool: True if movement was successful, False otherwise
-    '''
-    return self.moveToJoint(self.home_joint_pos)
+    speed = 0.25
+    max_disp = np.max(np.abs(target_joint_pos-current_joint_pos))
+    end_time = max_disp / speed
+
+    traj = [InterpolatedUnivariateSpline([0.,end_time],[current_joint_pos[i], target_joint_pos[i]],k=1) for i in range(6)]
+    traj_vel = InterpolatedUnivariateSpline([0.,end_time/2, end_time], [0, 0.1, 0],k=1)
+    start_time, loop_time = time.time(), 0
+    while loop_time < end_time:
+      loop_time = time.time() - start_time
+      joint_state = JointState(
+        position=[traj[j](loop_time) for j in range(6)],
+        velocity=[traj_vel(loop_time)] * 6,
+      )
+      self.joint_cmd_pub.publish(joint_state)
+
+    joint_state = JointState(
+      position=[traj[j](loop_time) for j in range(6)],
+      velocity=[0] * 6
+    )
+    self.joint_cmd_pub.publish(joint_state)
 
   def getEEPose(self):
     ''' Get the current pose of the end effector. '''

@@ -8,11 +8,10 @@ class ForceSensor(object):
     self.force_obs_len = force_obs_len
 
     self.initial_force = None
-    self.force_history = list()
+    self.force_history = [[0, 0, 0, 0, 0, 0]] * self.force_obs_len
     self.wrench_sub = rospy.Subscriber('wrench', WrenchStamped, self.wrenchCallback)
 
   # TODO: Check frame for this message, need to be in global (world) frame
-  # TODO: Test force zero'ing w/the initial force
   def wrenchCallback(self, data):
     current_wrench = np.array([
       data.wrench.force.x,
@@ -23,6 +22,7 @@ class ForceSensor(object):
       data.wrench.torque.z
     ])
 
+    # TODO: Might need to take a average to get good zero'ing
     if self.initial_force is None:
       self.initial_force = current_wrench
 
@@ -30,7 +30,7 @@ class ForceSensor(object):
 
   def reset(self):
     self.initial_force = None
-    self.force_history = list()
+    self.force_history = [[0, 0, 0, 0, 0, 0]] * self.force_obs_len
 
   def getObservation(self):
-    return self.force_history[-self.force_obs_len:]
+    return np.array(self.force_history[-self.force_obs_len:])

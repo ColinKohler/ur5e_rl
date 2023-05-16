@@ -9,16 +9,16 @@ class Gripper(object):
   '''
   def __init__(self, p_min=0, p_max=1):
     # TODO: Set these to the correct ros topics
-    self.control_sub = rospy.Subscriber('', None, self.updateGripperState)
-    self.control_pub = rospy.Publisher('', None, queue_size=1)
+    #self.control_sub = rospy.Subscriber('', None, self.updateGripperState)
+    #self.control_pub = rospy.Publisher('', None, queue_size=1)
 
     self.p_min = p_min
     self.p_max = p_max
-    self.state = None
+    self.state = 0
 
-    print('Connecting to gripper controller...')
-    while self.control_pub.get_num_connections() == 0 or self.state == None:
-      rospy.sleep(0.01)
+    #print('Connecting to gripper controller...')
+    #while self.control_pub.get_num_connections() == 0 or self.state == None:
+    #  rospy.sleep(0.01)
 
   def updateGripperState(self, msg):
     ''' Callback for gripper control subscriber.
@@ -56,10 +56,11 @@ class Gripper(object):
     ''' Open the gripper to the max amount. '''
     self.setPosition(1)
 
-  def getCurrentPosition():
+  def getCurrentPosition(self):
     ''' Get the current positon of the gripper.
 
     Returns:
       float: The amoun the gripper is open (range [0,1])
     '''
-    return 1 - (self.state.position / self.p_max)
+    return 0
+    #return 1 - (self.state.position / self.p_max)

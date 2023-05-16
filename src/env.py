@@ -14,7 +14,8 @@ class Env(object):
     self.workspace = workspace
     self.vision_size = vision_size
     self.force_obs_len = force_obs_len
-    self.obs_type = ['vision', 'force', 'proprio']
+    #self.obs_type = ['vision', 'force', 'proprio']
+    self.obs_type = ['force', 'proprio']
 
     self.ur5e = UR5e()
     self.rgbd_sensor = RGBDSensor(self.vision_size)
@@ -27,20 +28,17 @@ class Env(object):
     self.force_sensor.reset()
     self.num_steps = 0
 
-    #return self.getObservation()
-    return None
+    return self.getObservation()
 
   def step(self, action):
     p, x, y, z, rot = action
 
     target_pose = self.getActionPose(action)
-    print(target_pose.getPoseStamped())
     self.ur5e.moveToPose(target_pose)
     #self.ur5e.sendGripperCmd(p)
     self.num_steps += 1
 
-    #obs = self.getObservation()
-    obs = None
+    obs = self.getObservation()
     done = self.checkTermination()
     reward = self.getReward()
 
@@ -71,7 +69,7 @@ class Env(object):
     ee_pose = self.ur5e.getEEPose()
     ee_pos = ee_pose.getPosition()
     ee_rz = ee_pose.getEulerOrientation()[-1]
-    proprio = np.array([self.robot.gripper.getOpenRatio()] + ee_pos + [ee_rz])
+    proprio = np.array([self.ur5e.getGripperState()] + ee_pos + [ee_rz])
     return proprio
 
   def getObservation(self):
