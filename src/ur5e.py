@@ -29,8 +29,7 @@ class UR5e(object):
     self.joint_positions = np.zeros(6)
     self.joint_reorder = [2,1,0,3,4,5]
 
-    # TODO: Update these
-    self.home_joint_pos = (np.pi/180)*np.array([90.0, -120.0, 90.0, -60.0, -90.0, 180.0])
+    self.home_joint_pos = (np.pi/180)*np.array([75.0, -85.0, 90.0, -95.0, -90.0, 160.0])
     self.home_joint_state = JointState(
       position=self.home_joint_pos,
       velocity=[0] * 6
@@ -66,7 +65,7 @@ class UR5e(object):
     current_joint_pos = copy.copy(self.joint_positions)
     target_joint_pos = self.home_joint_pos
 
-    speed = 0.25
+    speed = 0.1
     max_disp = np.max(np.abs(target_joint_pos-current_joint_pos))
     end_time = max_disp / speed
 

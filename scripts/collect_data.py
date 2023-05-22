@@ -9,18 +9,25 @@ import numpy as np
 from scipy.ndimage import rotate
 
 from src.env import Env
+from configs import *
 
 if __name__ == '__main__':
-  workspace = np.array(
-    [
-      [-0.15, 0.15],
-      [ 0.35, 0.65],
-      [-0.01, 0.25]
-    ]
+  checkpoint = {
+    'weights' : None,
+    'optimizer_state' : None,
+    'training_step' : 0,
+    'num_eps' : 0,
+    'num_steps' : 0,
+  }
+  config = BlockReachingConfig(False, vision_size, results_path=args.results_path)
+
+  replay_buffer_worker = ReplayBuffer.options(num_cpus=0, num_gpus=0).remote(
+    checkpoint,
+    dict(),
+    config
   )
-  vision_size = 64
-  force_obs_len = 64
-  env = Env(workspace, vision_size, force_obs_len)
+
+  env = Env(config)
   time.sleep(1)
 
   while not rospy.is_shutdown():
