@@ -29,7 +29,7 @@ class Config(object):
     self.encoder = encoder.split('+')
 
     # Training
-    self.root_path = 'data'
+    self.root_path = '/home/helpinghands/workspace/data/'
     self.num_gpus = num_gpus
     self.pre_training_steps = 0
     self.gen_data_on_gpu = False

@@ -59,18 +59,19 @@ class UR5e(object):
       - pose (utils.Pose): Pose to move the end effector to.
     '''
     self.pose_cmd_pub.publish(pose.getPoseStamped())
+    time.sleep(1.0) # TODO: Probably best to not hardcode his
 
   def moveToHome(self):
     ''' Moves the robot to the home position. '''
     current_joint_pos = copy.copy(self.joint_positions)
     target_joint_pos = self.home_joint_pos
 
-    speed = 0.1
+    speed = 0.25
     max_disp = np.max(np.abs(target_joint_pos-current_joint_pos))
     end_time = max_disp / speed
 
     traj = [InterpolatedUnivariateSpline([0.,end_time],[current_joint_pos[i], target_joint_pos[i]],k=1) for i in range(6)]
-    traj_vel = InterpolatedUnivariateSpline([0.,end_time/2, end_time], [0, 0.1, 0],k=1)
+    traj_vel = InterpolatedUnivariateSpline([0.,end_time/2, end_time], [0, 0.05, 0],k=1)
     start_time, loop_time = time.time(), 0
     while loop_time < end_time:
       loop_time = time.time() - start_time

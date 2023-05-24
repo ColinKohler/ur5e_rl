@@ -18,7 +18,7 @@ class BlockReachingConfig(Config):
 
     # Env
     self.max_steps = 50
-    self.max_force = 50
+    self.max_force = 100
 
     # Training
     if results_path:

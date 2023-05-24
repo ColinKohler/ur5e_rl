@@ -9,40 +9,45 @@ import numpy as np
 from scipy.ndimage import rotate
 
 from src.env import Env
+from configs import *
 
 if __name__ == '__main__':
-  workspace = np.array(
-    [
-      [-0.15, 0.15],
-      [ 0.35, 0.65],
-      [-0.01, 0.25]
-    ]
-  )
-  vision_size = 64
-  force_obs_len = 64
-  env = Env(workspace, vision_size, force_obs_len)
+  checkpoint = {
+    'weights' : None,
+    'optimizer_state' : None,
+    'training_step' : 0,
+    'num_eps' : 0,
+    'num_steps' : 0,
+  }
+  config = BlockReachingConfig(False, 64, results_path='block_centering')
+
+  env = Env(config)
   time.sleep(1)
 
   while not rospy.is_shutdown():
-    action = input('Action: ')
-    if action == 'r':
+    cmd_action = input('Action: ')
+    if not cmd_action:
+      obs, done, reward = env.step(action)
+    elif cmd_action == 'r':
       obs = env.reset()
     else:
-      action = action.split(' ')
-      if len(action) != 5:
+      cmd_action = cmd_action.split(' ')
+      if len(cmd_action) != 5:
         print('Invalid action given. Required format: p x y z r')
         continue
 
-      obs, done, reward = env.step([0.025 * float(a) for a in action])
+      action = [0.025 * float(a) for a in cmd_action]
+      obs, done, reward = env.step(action)
 
     vision, force, proprio = obs
 
-    plt.imshow(rotate(vision.transpose(1, 2, 0), 180, mode='nearest', order=1)[:,:,0]); plt.show()
-    plt.plot(force[:,0], label='Fx')
-    plt.plot(force[:,1], label='Fy')
-    plt.plot(force[:,2], label='Fz')
-    plt.plot(force[:,3], label='Mx')
-    plt.plot(force[:,4], label='My')
-    plt.plot(force[:,5], label='Mz')
+    fig, ax = plt.subplots(nrows=1, ncols=2)
+    ax[0].plot(force[:,0], label='Fx')
+    ax[0].plot(force[:,1], label='Fy')
+    ax[0].plot(force[:,2], label='Fz')
+    ax[0].plot(force[:,3], label='Mx')
+    ax[0].plot(force[:,4], label='My')
+    ax[0].plot(force[:,5], label='Mz')
+    ax[1].imshow(vision.squeeze())
     plt.legend()
     plt.show()

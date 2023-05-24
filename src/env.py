@@ -1,4 +1,5 @@
 import rospy
+import time
 import copy
 import numpy as np
 import scipy.ndimage
@@ -25,14 +26,13 @@ class Env(object):
 
   def reset(self):
     self.ur5e.reset()
+    time.sleep(2) # TODO: Best to not hardcode this
     self.force_sensor.reset()
     self.num_steps = 0
 
     return self.getObservation()
 
   def step(self, action):
-    p, x, y, z, rot = action
-
     target_pose = self.getActionPose(action)
     self.ur5e.moveToPose(target_pose)
     #self.ur5e.sendGripperCmd(p)
@@ -52,7 +52,6 @@ class Env(object):
     target_pose.pos = np.array(current_pose.pos) + np.array([x, y, z])
     target_pose.rot = [current_pose.rot[0], current_pose.rot[1], current_pose.rot[2] + rot]
 
-    # TODO: Add clipping back in once frame junk is workeded out
     target_pose.pos[0] = np.clip(
       target_pose.pos[0], self.workspace[0, 0], self.workspace[0, 1]
     )
@@ -62,7 +61,6 @@ class Env(object):
     target_pose.pos[2] = np.clip(
       target_pose.pos[2], self.workspace[2, 0], self.workspace[2, 1]
     )
-    print(target_pose.getPoseStamped())
 
     return target_pose
 

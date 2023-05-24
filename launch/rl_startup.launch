@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find ur5e_rg2_moveit_config)/launch/move_group.launch" />
+  <include file="$(find openni2_launch)/launch/openni2.launch" />
+  <node pkg="ur5e_compliant_controller" type="pose_arm_controller.py" name="pose_arm_controller" respawn="true"/>
+  <node pkg="ur5e_rl" type="ee_pose_pub.py" name="ee_pose" respawn="true"/>
+</launch>
