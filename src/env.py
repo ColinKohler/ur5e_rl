@@ -42,7 +42,7 @@ class Env(object):
     done = self.checkTermination()
     reward = self.getReward()
 
-    return obs, done, reward
+    return obs, reward, done
 
   def getActionPose(self, action):
     p, x, y, z, rot = action
