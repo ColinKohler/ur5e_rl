@@ -1,3 +1,4 @@
+import tf
 import rospy
 import time
 import copy
@@ -7,6 +8,8 @@ import scipy.ndimage
 from src.ur5e import UR5e
 from src.rgbd_sensor import RGBDSensor
 from src.force_sensor import ForceSensor
+from src.tf_proxy import TFProxy
+from src.utils import Pose
 
 class Env(object):
   def __init__(self, config):
@@ -18,9 +21,10 @@ class Env(object):
     self.force_obs_len = self.config.force_history
     self.obs_type = self.config.obs_type
 
+    self.tf_proxy = TFProxy()
     self.ur5e = UR5e()
     self.rgbd_sensor = RGBDSensor(self.vision_size)
-    self.force_sensor = ForceSensor(self.force_obs_len)
+    self.force_sensor = ForceSensor(self.force_obs_len, self.tf_proxy)
 
     self.num_steps = 0
 
@@ -39,28 +43,28 @@ class Env(object):
     self.num_steps += 1
 
     obs = self.getObservation()
-    done = self.checkTermination()
-    reward = self.getReward()
+    done = self.checkTermination(obs)
+    reward = self.getReward(obs)
 
     return obs, reward, done
 
   def getActionPose(self, action):
-    p, x, y, z, rot = action
+    p, x, y, z, rz = action
     current_pose = self.ur5e.getEEPose()
-    target_pose = copy.copy(current_pose)
+    current_pos = current_pose.getPosition()
+    current_rot = current_pose.getEulerOrientation()
 
-    target_pose.pos = np.array(current_pose.pos) + np.array([x, y, z])
-    target_pose.rot = [current_pose.rot[0], current_pose.rot[1], current_pose.rot[2] + rot]
+    pos = np.array(current_pos) + np.array([x,y,z])
+    rot = np.array(current_rot) + np.array([0, 0, rz])
 
-    target_pose.pos[0] = np.clip(
-      target_pose.pos[0], self.workspace[0, 0], self.workspace[0, 1]
-    )
-    target_pose.pos[1] = np.clip(
-      target_pose.pos[1], self.workspace[1, 0], self.workspace[1, 1]
-    )
-    target_pose.pos[2] = np.clip(
-      target_pose.pos[2], self.workspace[2, 0], self.workspace[2, 1]
-    )
+    pos[0] = np.clip(pos[0], self.workspace[0, 0], self.workspace[0, 1])
+    pos[1] = np.clip(pos[1], self.workspace[1, 0], self.workspace[1, 1])
+    pos[2] = np.clip(pos[2], self.workspace[2, 0], self.workspace[2, 1])
+
+    #print('Current: {} | {}'.format(current_pos, current_rot))
+    #print('Target:  {} | {}'.format(pos, rot))
+
+    target_pose = Pose(*pos, *tf.transformations.quaternion_from_euler(*rot))
 
     return target_pose
 

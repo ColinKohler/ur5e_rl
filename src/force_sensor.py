@@ -1,18 +1,29 @@
 import rospy
 import numpy as np
+import tf2_geometry_msgs
 
+from src.utils import PythonBPF
 from geometry_msgs.msg import WrenchStamped
 
 class ForceSensor(object):
-  def __init__(self, force_obs_len):
+  def __init__(self, force_obs_len, tf_proxy):
     self.force_obs_len = force_obs_len
+    self.tf_proxy = tf_proxy
+
+    # define bandpass filter parameters
+    fl = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    fh = [30.0, 30.0, 30.0, 30.0, 30.0, 30.0]
+    fs = 500
+    self.filter = PythonBPF(fs, fl, fh)
 
     self.initial_force = None
     self.force_history = [[0, 0, 0, 0, 0, 0]] * self.force_obs_len
     self.wrench_sub = rospy.Subscriber('wrench', WrenchStamped, self.wrenchCallback)
 
-  # TODO: Check frame for this message, need to be in global (world) frame
   def wrenchCallback(self, data):
+    transform = self.tf_proxy.lookupTransform('base_link', data.header.frame_id)
+    data = tf2_geometry_msgs.do_transform_wrench(data, transform)
+
     current_wrench = np.array([
       data.wrench.force.x,
       data.wrench.force.y,
@@ -22,11 +33,11 @@ class ForceSensor(object):
       data.wrench.torque.z
     ])
 
-    # TODO: Might need to take a average to get good zero'ing
     if self.initial_force is None:
       self.initial_force = current_wrench
+      self.filter.calculate_initial_values(current_wrench)
 
-    self.force_history.append(current_wrench - self.initial_force)
+    self.force_history.append(np.array(self.filter.filter(current_wrench)))
 
   def reset(self):
     self.initial_force = None

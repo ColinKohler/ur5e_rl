@@ -7,6 +7,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Bool
 
 from src.gripper import Gripper
 from src.tf_proxy import TFProxy
@@ -20,6 +21,7 @@ class UR5e(object):
   def __init__(self):
     self.joint_cmd_pub = rospy.Publisher('joint_command', JointState, queue_size=1)
     self.pose_cmd_pub = rospy.Publisher('pose_command', PoseStamped, queue_size=1)
+    self.reset_wrench_pub = rospy.Publisher('reset_wrench', Bool, queue_size=1)
     self.ee_pose_sub = rospy.Subscriber('ee_pose', PoseStamped, self.eePoseCallback)
     self.joint_sub = rospy.Subscriber("joint_states", JointState, self.jointStateCallback)
 
@@ -29,11 +31,12 @@ class UR5e(object):
     self.joint_positions = np.zeros(6)
     self.joint_reorder = [2,1,0,3,4,5]
 
-    self.home_joint_pos = (np.pi/180)*np.array([75.0, -85.0, 90.0, -95.0, -90.0, 160.0])
+    self.home_joint_pos = (np.pi/180)*np.array([76., -84., 90., -96., -90., 165.])
     self.home_joint_state = JointState(
       position=self.home_joint_pos,
       velocity=[0] * 6
     )
+    self.home_pose = Pose(0, 0.55, 0.25, 0.5, 0.5, -0.5, 0.5)
 
     self.gripper = Gripper()
     #self.gripper.reset()
@@ -43,6 +46,7 @@ class UR5e(object):
 
   def reset(self):
     self.moveToHome()
+    self.reset_wrench_pub.publish(Bool(True))
     #self.openGripper()
 
   def eePoseCallback(self, data):
@@ -86,6 +90,9 @@ class UR5e(object):
       velocity=[0] * 6
     )
     self.joint_cmd_pub.publish(joint_state)
+    time.sleep(1.0)
+
+    self.moveToPose(self.home_pose)
 
   def getEEPose(self):
     ''' Get the current pose of the end effector. '''

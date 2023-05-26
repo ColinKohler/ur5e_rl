@@ -16,6 +16,12 @@ class RGBDSensor(object):
     self.depth_sub = rospy.Subscriber('/camera/depth/image', numpy_msg(Image), self.depthCallback, queue_size=1)
     self.bridge = CvBridge()
 
+    # Wait for subscriber to get data
+    self.depth_data = None
+    print('Waiting for vision data...')
+    while self.depth_data is None:
+      rospy.sleep(0.1)
+
   def rgbCallback(self, data):
     self.rgb_data = data.data.reshape((3, self.vision_size, self.vision_size))
 
@@ -33,5 +39,9 @@ class RGBDSensor(object):
     # Resize image and rotate
     depth = skimage.transform.resize(depth, (self.vision_size, self.vision_size))
     depth = rotate(depth, 180)
+
+    # Remove depth past the table
+    table_mask = depth > 1.0
+    depth[table_mask] = 1
 
     return depth.reshape(1, self.vision_size, self.vision_size)

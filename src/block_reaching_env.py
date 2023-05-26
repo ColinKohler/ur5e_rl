@@ -5,14 +5,18 @@ class BlockReachingEnv(Env):
     super().__init__(config)
     self.max_steps = 50
 
-  # TODO:
-  #  1.) If gripper is in contact (high force) and >table height?
-  def checkTermination(self, num_steps):
-    return num_steps >= self.max_steps
+  def checkTermination(self, obs):
+    is_touching_block = self.touchingBlock(obs)
+    return is_touching_block or self.num_steps >= self.max_steps
 
-  def getReward(self, observation):
-    vision, force, proprio = observation
+  def getReward(self, obs):
+    return float(self.touchingBlock(obs))
 
-    if (proprio[3] <= 0.0073 and np.average(force)<= -2.0):
-      return 1
-    return 0
+  def touchingBlock(self, obs):
+    avg_force = list()
+    for i in range(6):
+      avg_force.append(np.convolve(obs[1][:,i], np.ones(10), 'valid') / 10)
+    avg_force = np.array(avg_force).transpose(1, 0)
+    axis_max = np.max(avg_force, axis=0)
+    # NOTE: Currently this only works for top down touching.
+    return obs[2][3] >= 0.0 and axis_max[2] >= 2.0

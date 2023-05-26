@@ -9,6 +9,8 @@ import numpy as np
 from scipy.ndimage import rotate
 
 from src.env import Env
+from src.block_reaching_env import BlockReachingEnv
+
 from configs import *
 
 if __name__ == '__main__':
@@ -21,42 +23,42 @@ if __name__ == '__main__':
   }
   config = BlockReachingConfig(False, 64, results_path='block_centering')
 
-  env = Env(config)
+  env = BlockReachingEnv(config)
   time.sleep(1)
 
+  plot = True
   while not rospy.is_shutdown():
     cmd_action = input('Action: ')
     if not cmd_action:
-      obs, done, reward = env.step(action)
+      obs, reward, done = env.step(action)
     elif cmd_action == 'r':
       obs = env.reset()
+      reward = 0
+      done = False
     else:
       cmd_action = cmd_action.split(' ')
       if len(cmd_action) != 5:
         print('Invalid action given. Required format: p x y z r')
         continue
 
-      action = [0.025 * float(a) for a in cmd_action]
-      obs, done, reward = env.step(action)
+      dx = float(cmd_action[1]) * config.dpos
+      dy = float(cmd_action[2]) * config.dpos
+      dz = float(cmd_action[3]) * config.dpos
+      dr = float(cmd_action[4]) * config.drot
+      action = [0, dx, dy, dz, dr]
+      obs, reward, done = env.step(action)
 
+    print(reward, done)
     vision, force, proprio = obs
 
-    print(proprio)
-    print("avg of all forces")
-    print(np.average(force))
-    if (proprio[3] <= 0.0073 and np.average(force)<= -2.0):
-      print("Block touched!")
-      done = 1
-      reward = 1
-      exit()
-
-    fig, ax = plt.subplots(nrows=1, ncols=2)
-    ax[0].plot(force[:,0], label='Fx')
-    ax[0].plot(force[:,1], label='Fy')
-    ax[0].plot(force[:,2], label='Fz')
-    ax[0].plot(force[:,3], label='Mx')
-    ax[0].plot(force[:,4], label='My')
-    ax[0].plot(force[:,5], label='Mz')
-    ax[1].imshow(vision.squeeze())
-    plt.legend()
-    plt.show()
+    if plot:
+      fig, ax = plt.subplots(nrows=1, ncols=2)
+      ax[0].imshow(vision.squeeze())
+      ax[1].plot(force[:,0], label='Fx')
+      ax[1].plot(force[:,1], label='Fy')
+      ax[1].plot(force[:,2], label='Fz')
+      ax[1].plot(force[:,3], label='Mx')
+      ax[1].plot(force[:,4], label='My')
+      ax[1].plot(force[:,5], label='Mz')
+      plt.legend()
+      plt.show()
