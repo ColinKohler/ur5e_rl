@@ -41,6 +41,15 @@ if __name__ == '__main__':
 
     vision, force, proprio = obs
 
+    print(proprio)
+    print("avg of all forces")
+    print(np.average(force))
+    if (proprio[3] <= 0.0073 and np.average(force)<= -2.0):
+      print("Block touched!")
+      done = 1
+      reward = 1
+      exit()
+
     fig, ax = plt.subplots(nrows=1, ncols=2)
     ax[0].plot(force[:,0], label='Fx')
     ax[0].plot(force[:,1], label='Fy')

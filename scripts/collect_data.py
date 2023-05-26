@@ -14,6 +14,7 @@ from src.env import Env
 from midichlorians.replay_buffer import ReplayBuffer
 from midichlorians.shared_storage import SharedStorage
 from midichlorians.data_generator import EpisodeHistory
+from src.block_reaching_env import BlockReachingEnv
 from configs import *
 
 if __name__ == '__main__':
@@ -26,6 +27,7 @@ if __name__ == '__main__':
     'num_steps' : 0,
   }
   config = BlockReachingConfig(False, 64, results_path='block_centering')
+ 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
 
   shared_storage = SharedStorage.remote(checkpoint, config)
@@ -35,6 +37,7 @@ if __name__ == '__main__':
     config
   )
 
+  block_reaching = BlockReachingEnv(config)
   env = Env(config)
   time.sleep(1)
 
@@ -62,6 +65,18 @@ if __name__ == '__main__':
       action = np.array([0.025 * float(a) for a in cmd_action])
       obs, done, reward = env.step(action)
       eps_history.logStep(obs[0], obs[1], obs[2], action, 0, 0, 0, config.max_force)
+
+      if block_reaching.getReward(obs):
+          print("block touched + test complete")
+          reward = 1
+          done = 1
+          exit()
+
+      if block_reaching.checkTermination(env.num_steps):
+        print("Timeout reached")
+        reward = 0
+        done = 1
+        exit()
 
     vision, force, proprio = obs
 
