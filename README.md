@@ -1,7 +1,11 @@
 # TODO:
-  - Setup RGB-D sensor: Need clamps and angled sensor mount 
-  - Fill in bones for vision
-  - Fill in bones for gripper control
-  - Block reaching test \ Both of these can have goal checking w/o
-  - Block picking test  / needing calibrated sensors
-  - Add calibrated sensor we can use to test for RL termination/reward
+  - Generate block centering/block touching data (60/120)
+  - Make sure IK won't cause trouble for all possible poses in workspace
+  - Fix rotation clipping w/quaternions
+  - Replace depth with RGB-D sensor
+  - Add top-down calibrated RGB-D sensor
+
+# Need:
+  - 2 RGB-D sensors
+  - 80/20 top down mount for sensor
+  - 4 u-clamps for 80/20 mounts

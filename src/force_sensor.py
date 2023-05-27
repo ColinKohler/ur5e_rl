@@ -11,8 +11,8 @@ class ForceSensor(object):
     self.tf_proxy = tf_proxy
 
     # define bandpass filter parameters
-    fl = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    fh = [30.0, 30.0, 30.0, 30.0, 30.0, 30.0]
+    fl = [0.0] * 6
+    fh = [30.0] * 6
     fs = 500
     self.filter = PythonBPF(fs, fl, fh)
 

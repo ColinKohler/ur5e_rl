@@ -67,7 +67,6 @@ class Env(object):
     pos[2] = np.clip(pos[2], self.workspace[2, 0], self.workspace[2, 1])
     # TODO: This is not the correct way to clip a quaternion
     # TODO: These limits seem wrong but IK fails around here
-    print(rot)
     if rot[0] < 0:
       rot[0] = 0.708
     else:
@@ -78,10 +77,6 @@ class Env(object):
     else:
       rot[2] = np.clip(rot[2], -0.702, -0.217)
     rot[3] = np.clip(rot[3], 0.05, 0.684)
-    print(rot)
-
-    #print('Current: {} | {}'.format(current_pos, current_rot))
-    #print('Target:  {} | {}'.format(pos, rot))
 
     target_pose = Pose(*pos, *rot)
 
