@@ -17,7 +17,8 @@ class Pose(object):
     return self.pos
 
   def getEulerOrientation(self):
-    return tf.transformations.euler_from_quaternion(self.rot)
+    rot = list(tf.transformations.euler_from_quaternion(self.rot))
+    return rot
 
   def getOrientationQuaternion(self):
     return self.rot

@@ -41,6 +41,7 @@ class UR5e(object):
     self.gripper = Gripper()
     #self.gripper.reset()
     #self.gripper.activate()
+    self.action_sleep = 1.5
 
     self.tf_proxy = TFProxy()
 
@@ -56,6 +57,13 @@ class UR5e(object):
     self.joint_positions[self.joint_reorder] = data.position
     self.joint_state = data
 
+  def waitUntilNotMoving(self):
+    while True:
+      prev_joint_position = self.joint_positions.copy()
+      rospy.sleep(0.2)
+      if np.allclose(prev_joint_position, self.joint_positions, atol=1e-3):
+        break
+
   def moveToPose(self, pose):
     ''' Move the end effector to the specified pose.
 
@@ -64,6 +72,7 @@ class UR5e(object):
     '''
     self.pose_cmd_pub.publish(pose.getPoseStamped())
     time.sleep(1.0) # TODO: Probably best to not hardcode his
+    self.waitUntilNotMoving()
 
   def moveToHome(self):
     ''' Moves the robot to the home position. '''
@@ -90,12 +99,12 @@ class UR5e(object):
       velocity=[0] * 6
     )
     self.joint_cmd_pub.publish(joint_state)
-    time.sleep(1.0)
 
     self.moveToPose(self.home_pose)
 
   def getEEPose(self):
     ''' Get the current pose of the end effector. '''
+
     pos = self.ee_pose.pose.position
     rot = self.ee_pose.pose.orientation
     return Pose(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w)

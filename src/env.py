@@ -4,6 +4,7 @@ import time
 import copy
 import numpy as np
 import scipy.ndimage
+import quaternion
 
 from src.ur5e import UR5e
 from src.rgbd_sensor import RGBDSensor
@@ -30,7 +31,7 @@ class Env(object):
 
   def reset(self):
     self.ur5e.reset()
-    time.sleep(2) # TODO: Best to not hardcode this
+    #time.sleep(1) # TODO: Best to not hardcode this
     self.force_sensor.reset()
     self.num_steps = 0
 
@@ -52,19 +53,37 @@ class Env(object):
     p, x, y, z, rz = action
     current_pose = self.ur5e.getEEPose()
     current_pos = current_pose.getPosition()
-    current_rot = current_pose.getEulerOrientation()
+    current_rot = np.array(current_pose.getOrientationQuaternion())
+    current_rot = np.quaternion(*current_rot[[3,0,1,2]])
 
     pos = np.array(current_pos) + np.array([x,y,z])
-    rot = np.array(current_rot) + np.array([0, 0, rz])
+    delta_rot = np.array(tf.transformations.quaternion_from_euler(0, 0, rz))
+    delta_rot = np.quaternion(*delta_rot[[3,0,1,2]])
+    rot = quaternion.as_float_array(delta_rot * current_rot)
+    rot = rot[[1,2,3,0]]
 
     pos[0] = np.clip(pos[0], self.workspace[0, 0], self.workspace[0, 1])
     pos[1] = np.clip(pos[1], self.workspace[1, 0], self.workspace[1, 1])
     pos[2] = np.clip(pos[2], self.workspace[2, 0], self.workspace[2, 1])
+    # TODO: This is not the correct way to clip a quaternion
+    # TODO: These limits seem wrong but IK fails around here
+    print(rot)
+    if rot[0] < 0:
+      rot[0] = 0.708
+    else:
+      rot[0] = np.clip(rot[0], 0.1548, 0.708)
+    rot[1] = np.clip(rot[1], 0.05, 0.6786)
+    if rot[2] > 0:
+      rot[2] = -0.705
+    else:
+      rot[2] = np.clip(rot[2], -0.702, -0.217)
+    rot[3] = np.clip(rot[3], 0.05, 0.684)
+    print(rot)
 
     #print('Current: {} | {}'.format(current_pos, current_rot))
     #print('Target:  {} | {}'.format(pos, rot))
 
-    target_pose = Pose(*pos, *tf.transformations.quaternion_from_euler(*rot))
+    target_pose = Pose(*pos, *rot)
 
     return target_pose
 
