@@ -76,7 +76,7 @@ if __name__ == '__main__':
     vision, force, proprio = obs
 
   buffer = ray.get(replay_buffer.getBuffer.remote())
-  shared_storage.saveReplayBuffer.remote(copy.copy(buffer))
-  shared_storage.saveCheckpoint.remote()
+  ray.get(shared_storage.saveReplayBuffer.remote(copy.copy(buffer)))
+  ray.get(shared_storage.saveCheckpoint.remote())
 
   ray.shutdown()

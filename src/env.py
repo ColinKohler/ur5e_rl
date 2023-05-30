@@ -18,7 +18,7 @@ class Env(object):
     self.config = config
 
     self.workspace = self.config.workspace
-    self.vision_size = self.config.vision_size
+    self.vision_size = self.config.obs_size
     self.force_obs_len = self.config.force_history
     self.obs_type = self.config.obs_type
 
