@@ -52,13 +52,14 @@ if __name__ == '__main__':
     vision, force, proprio = obs
 
     if plot:
-      fig, ax = plt.subplots(nrows=1, ncols=2)
-      ax[0].imshow(vision.squeeze())
-      ax[1].plot(force[:,0], label='Fx')
-      ax[1].plot(force[:,1], label='Fy')
-      ax[1].plot(force[:,2], label='Fz')
-      ax[1].plot(force[:,3], label='Mx')
-      ax[1].plot(force[:,4], label='My')
-      ax[1].plot(force[:,5], label='Mz')
+      fig, ax = plt.subplots(nrows=1, ncols=3)
+      ax[0].imshow(vision[:3].transpose(1,2,0))
+      ax[1].imshow(vision[-1])
+      ax[2].plot(force[:,0], label='Fx')
+      ax[2].plot(force[:,1], label='Fy')
+      ax[2].plot(force[:,2], label='Fz')
+      ax[2].plot(force[:,3], label='Mx')
+      ax[2].plot(force[:,4], label='My')
+      ax[2].plot(force[:,5], label='Mz')
       plt.legend()
       plt.show()
