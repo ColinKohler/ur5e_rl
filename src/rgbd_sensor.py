@@ -12,8 +12,8 @@ class RGBDSensor(object):
   def __init__(self, vision_size):
     self.vision_size = vision_size
 
-    self.rgb_sub = rospy.Subscriber('/camera/color/image_raw', numpy_msg(Image), self.rgbCallback, queue_size=1)
-    self.depth_sub = rospy.Subscriber('/camera/depth/image_rect_raw', numpy_msg(Image), self.depthCallback, queue_size=1)
+    self.rgb_sub = rospy.Subscriber('/camera2/color/image_raw', numpy_msg(Image), self.rgbCallback, queue_size=1)
+    self.depth_sub = rospy.Subscriber('/camera2/depth/image_rect_raw', numpy_msg(Image), self.depthCallback, queue_size=1)
     self.bridge = CvBridge()
 
     # Wait for subscriber to get data

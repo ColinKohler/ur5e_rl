@@ -4,6 +4,7 @@ import numpy as np
 import copy
 import time
 from scipy.interpolate import InterpolatedUnivariateSpline
+import moveit_commander
 
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import JointState
@@ -32,11 +33,8 @@ class UR5e(object):
     self.joint_reorder = [2,1,0,3,4,5]
 
     self.home_joint_pos = (np.pi/180)*np.array([76., -84., 90., -96., -90., 165.])
-    self.home_joint_state = JointState(
-      position=self.home_joint_pos,
-      velocity=[0] * 6
-    )
     self.home_pose = Pose(0, 0.55, 0.25, 0.5, 0.5, -0.5, 0.5)
+    self.offset_home_joint_pos = (np.pi/180)*np.array([124., -84., 90., -96., -90., 165.])
 
     self.gripper = Gripper()
     #self.gripper.reset()
@@ -44,6 +42,15 @@ class UR5e(object):
     self.action_sleep = 1.5
 
     self.tf_proxy = TFProxy()
+
+    # MoveIt
+    self.group_name = 'manipulator'
+    self.ee_link = 'rg2_eef_link'
+    moveit_commander.roscpp_initialize(sys.argv)
+    self.move_group = moveit_commander.MoveGroupCommander(self.group_name)
+    self.move_group.set_planning_time = 0.1
+    self.move_group.set_goal_position_tolerance(0.01)
+    self.move_group.set_goal_orientation_tolerance(0.01)
 
   def reset(self):
     self.moveToHome()
@@ -101,6 +108,32 @@ class UR5e(object):
     self.joint_cmd_pub.publish(joint_state)
 
     self.moveToPose(self.home_pose)
+
+  def moveToOffsetHome(self):
+    ''' Moves the robot to the offset home position. '''
+    current_joint_pos = copy.copy(self.joint_positions)
+    target_joint_pos = self.offset_home_joint_pos
+
+    speed = 0.25
+    max_disp = np.max(np.abs(target_joint_pos-current_joint_pos))
+    end_time = max_disp / speed
+
+    traj = [InterpolatedUnivariateSpline([0.,end_time],[current_joint_pos[i], target_joint_pos[i]],k=1) for i in range(6)]
+    traj_vel = InterpolatedUnivariateSpline([0.,end_time/2, end_time], [0, 0.01, 0],k=1)
+    start_time, loop_time = time.time(), 0
+    while loop_time < end_time:
+      loop_time = time.time() - start_time
+      joint_state = JointState(
+        position=[traj[j](loop_time) for j in range(6)],
+        velocity=[traj_vel(loop_time)] * 6,
+      )
+      self.joint_cmd_pub.publish(joint_state)
+
+    joint_state = JointState(
+      position=[traj[j](loop_time) for j in range(6)],
+      velocity=[0] * 6
+    )
+    self.joint_cmd_pub.publish(joint_state)
 
   def getEEPose(self):
     ''' Get the current pose of the end effector. '''

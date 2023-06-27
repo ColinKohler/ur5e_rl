@@ -12,7 +12,7 @@ from src.force_sensor import ForceSensor
 from src.tf_proxy import TFProxy
 from src.utils import Pose
 
-class Env(object):
+class BaseEnv(object):
   def __init__(self, config):
     rospy.init_node('ur5e_rl_env')
     self.config = config
@@ -30,6 +30,7 @@ class Env(object):
     self.num_steps = 0
 
   def reset(self):
+    self.resetWorkspace()
     self.ur5e.reset()
     #time.sleep(1) # TODO: Best to not hardcode this
     self.force_sensor.reset()
@@ -100,6 +101,9 @@ class Env(object):
       if obs_type == 'proprio':
         obs.append(self.getProprioObservation())
     return obs
+
+  def resetWorkspace(self):
+    return None
 
   def checkTermination(self):
     return None

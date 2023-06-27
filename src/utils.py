@@ -6,6 +6,17 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion
 from geometry_msgs.msg import Pose as RosPose
 from std_msgs.msg import Header
 
+def convertTfToPose(tf_st):
+  return Pose(
+    tf_st.transform.translation.x,
+    tf_st.transform.translation.y,
+    tf_st.transform.translation.z,
+    tf_st.transform.rotation.x,
+    tf_st.transform.rotation.y,
+    tf_st.transform.rotation.z,
+    tf_st.transform.rotation.w
+  )
+
 class Pose(object):
   ''' Utility class to convert various types of pose formats. '''
   def __init__(self, x, y, z, rx, ry, rz, rw=None):

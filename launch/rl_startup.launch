@@ -1,6 +1,14 @@
 <launch>
   <include file="$(find ur5e_rg2_moveit_config)/launch/move_group.launch" />
-  <include file="$(find realsense2_camera)/launch/rs_camera.launch" />
+  <include file="$(find realsense2_camera)/launch/rs_multiple_devices.launch">
+    <arg name="serial_no_camera1" value="913522070153" />
+    <arg name="serial_no_camera2" value="816612061172" />
+  </include>
+  <include file="$(find apriltag_ros)/launch/continuous_detection.launch">
+    <arg name="camera_name" value="/camera1/color" />
+    <arg name="image_topic" value="image_raw" />
+  </include>
   <node pkg="ur5e_compliant_controller" type="pose_arm_controller.py" name="pose_arm_controller" respawn="true"/>
   <node pkg="ur5e_rl" type="ee_pose_pub.py" name="ee_pose" respawn="true"/>
+  <node pkg="ur5e_rl" type="broadcast_sensor_tf.py" name="sensor_tf" respawn="true"/>
 </launch>

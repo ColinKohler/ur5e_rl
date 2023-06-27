@@ -8,8 +8,7 @@ import rospy
 import numpy as np
 from scipy.ndimage import rotate
 
-from src.env import Env
-from src.block_reaching_env import BlockReachingEnv
+from src.envs.block_reaching_env import BlockReachingEnv
 
 from configs import *
 
@@ -24,6 +23,8 @@ if __name__ == '__main__':
   config = BlockReachingConfig(False, 64, results_path='block_centering')
 
   env = BlockReachingEnv(config)
+  block = env.getBlockPose()
+  breakpoint()
   time.sleep(1)
 
   plot = True
