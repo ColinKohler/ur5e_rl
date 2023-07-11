@@ -11,13 +11,13 @@ class EEPosePublisher(object):
     rospy.init_node('ee_pose_pub', anonymous=True)
 
     moveit_commander.roscpp_initialize(sys.argv)
-    self.move_group = moveit_commander.MoveGroupCommander('manipulator')
+    self.move_group = moveit_commander.MoveGroupCommander('ur5e_arm')
     self.ee_pose_pub = rospy.Publisher("/ee_pose", PoseStamped, queue_size=1)
 
   def run(self):
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
-      ee_pose = self.move_group.get_current_pose(end_effector_link="rg2_eef_link")
+      ee_pose = self.move_group.get_current_pose(end_effector_link="ee_link")
       self.ee_pose_pub.publish(ee_pose)
 
       rate.sleep()

@@ -1,5 +1,5 @@
 <launch>
-  <include file="$(find ur5e_rg2_moveit_config)/launch/move_group.launch" />
+  <include file="$(find ur5e_robotiq_moveit_config)/launch/move_group.launch" />
   <include file="$(find realsense2_camera)/launch/rs_multiple_devices.launch">
     <arg name="serial_no_camera1" value="913522070153" />
     <arg name="serial_no_camera2" value="816612061172" />
@@ -11,4 +11,6 @@
   <node pkg="ur5e_compliant_controller" type="pose_arm_controller.py" name="pose_arm_controller" respawn="true"/>
   <node pkg="ur5e_rl" type="ee_pose_pub.py" name="ee_pose" respawn="true"/>
   <node pkg="ur5e_rl" type="broadcast_sensor_tf.py" name="sensor_tf" respawn="true"/>
+  <node pkg="robotiq_2f_gripper_control" type="Robotiq2FGripperRtuNode.py" name="gripper" args="/dev/ttyUSB0" respawn="true"/>
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find ur5e_rl)/rviz/ur5e_rl.rviz" />
 </launch>

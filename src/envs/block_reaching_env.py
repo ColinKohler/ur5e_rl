@@ -1,6 +1,7 @@
 import tf
 import rospy
 import numpy as np
+import numpy.random as npr
 
 from src.envs.base_env import BaseEnv
 import src.utils as utils
@@ -18,18 +19,22 @@ class BlockReachingEnv(BaseEnv):
     self.ur5e.moveToHome()
     self.ur5e.moveToOffsetHome()
     current_block_pose = self.getBlockPose()
+    current_block_pose.rot = [-0.5, -0.5, 0.5, -0.5]
 
     # Generate new random pose for the block
     self.block_pose = [
       npr.uniform(self.workspace[0,0]+0.05, self.workspace[0,1]-0.05),
-      npr.uniform(self.workspace[1,0]+0.05, self.workspace[1,1]-0.05)
+      npr.uniform(self.workspace[1,0]+0.05, self.workspace[1,1]-0.05),
       0.03
     ]
 
     # Pick and place the block at the new pose
-    self.ur5e.pick(current_block_pose)
-    self.ur5e.place(self.block_pose)
     self.ur5e.moveToHome()
+    self.ur5e.pick(current_block_pose)
+    import sys
+    sys.exit()
+    #self.ur5e.place(self.block_pose)
+    #self.ur5e.moveToHome()
 
   def checkTermination(self, obs):
     is_touching_block = self.touchingBlock(obs)

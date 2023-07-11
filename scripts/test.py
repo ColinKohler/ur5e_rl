@@ -23,8 +23,6 @@ if __name__ == '__main__':
   config = BlockReachingConfig(False, 64, results_path='block_centering')
 
   env = BlockReachingEnv(config)
-  block = env.getBlockPose()
-  breakpoint()
   time.sleep(1)
 
   plot = True
@@ -42,11 +40,12 @@ if __name__ == '__main__':
         print('Invalid action given. Required format: p x y z r')
         continue
 
+      p = float(cmd_action[0])
       dx = float(cmd_action[1]) * config.dpos
       dy = float(cmd_action[2]) * config.dpos
       dz = float(cmd_action[3]) * config.dpos
       dr = float(cmd_action[4]) * config.drot
-      action = [0, dx, dy, dz, dr]
+      action = [p, dx, dy, dz, dr]
       obs, reward, done = env.step(action)
 
     print(reward, done)

@@ -1,3 +1,4 @@
+import sys
 import rospy
 import tf
 import numpy as np
@@ -6,6 +7,7 @@ import time
 from scipy.interpolate import InterpolatedUnivariateSpline
 import moveit_commander
 
+from moveit_msgs.msg import DisplayTrajectory
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Bool
@@ -37,25 +39,48 @@ class UR5e(object):
     self.offset_home_joint_pos = (np.pi/180)*np.array([124., -84., 90., -96., -90., 165.])
 
     self.gripper = Gripper()
-    #self.gripper.reset()
-    #self.gripper.activate()
+    self.gripper.reset()
+    self.gripper.activate()
     self.action_sleep = 1.5
+
+    self.pick_offset = 0.1
+    self.place_offset = 0.1
+    self.gripper_offset = 0.15
 
     self.tf_proxy = TFProxy()
 
     # MoveIt
-    self.group_name = 'manipulator'
-    self.ee_link = 'rg2_eef_link'
+    self.group_name = 'ur5e_arm'
+    self.ee_link = 'ee_link'
     moveit_commander.roscpp_initialize(sys.argv)
-    self.move_group = moveit_commander.MoveGroupCommander(self.group_name)
-    self.move_group.set_planning_time = 0.1
-    self.move_group.set_goal_position_tolerance(0.01)
-    self.move_group.set_goal_orientation_tolerance(0.01)
+
+    # MoveIt Group
+    self.moveit_group = moveit_commander.MoveGroupCommander(self.group_name)
+    self.moveit_group.set_planning_time = 0.1
+    self.moveit_group.set_goal_position_tolerance(0.01)
+    self.moveit_group.set_goal_orientation_tolerance(0.01)
+
+    # MoveIt Planning Scene
+    self.moveit_scene = moveit_commander.PlanningSceneInterface()
+
+    table_pose = PoseStamped()
+    table_pose.header.frame_id = "base_link"
+    table_pose.pose.orientation.w = 1.0
+    table_pose.pose.position.y = 0.6
+    table_pose.pose.position.z = -0.03
+    self.moveit_scene.add_box('table', table_pose, size=(0.75, 1.2, 0.06))
+
+    roof_pose = PoseStamped()
+    roof_pose.header.frame_id = "base_link"
+    roof_pose.pose.orientation.w = 1.0
+    roof_pose.pose.position.y = 0.6
+    roof_pose.pose.position.z = 0.8
+    self.moveit_scene.add_box('roof', roof_pose, size=(0.75, 1.2, 0.06))
 
   def reset(self):
     self.moveToHome()
     self.reset_wrench_pub.publish(Bool(True))
-    #self.openGripper()
+    self.openGripper()
 
   def eePoseCallback(self, data):
     self.ee_pose = data
@@ -78,62 +103,73 @@ class UR5e(object):
       - pose (utils.Pose): Pose to move the end effector to.
     '''
     self.pose_cmd_pub.publish(pose.getPoseStamped())
-    time.sleep(1.0) # TODO: Probably best to not hardcode his
+    self.waitUntilNotMoving()
+
+  def pick(self, pose):
+    pose.pos[2] = pose.pos[2] + self.gripper_offset
+    pre_pose = copy.copy(pose)
+    pre_pose.pos[2] = pre_pose.pos[2] + self.pick_offset
+
+    self.moveit_group.clear_pose_targets()
+    self.moveit_group.set_pose_target(pre_pose.getPoseStamped())
+    success, traj, planning_time, err = self.moveit_group.plan()
+
+    input('move')
+
+    self.moveToJointTraj(traj.joint_trajectory)
+
+    #self.moveit_group.clear_pose_targets()
+    #self.moveit_group.set_pose_target(pose.getPoseStamped())
+    #success, traj, planning_time, err = self.moveit_group.plan()
+
+    #self.moveToPose(pre_pose)
+    #self.moveToPose(pose)
+    #self.gripper.close(force=1)
+    #self.moveToPose(pre_pose)
+    #self.moveToHome()
+
+  def place(self, pose):
+    pre_pose = copy.copy(pose)
+    pre_pose.z += self.pick_offset
+
+    self.moveToPose(pre_pose)
+    self.moveToPose(pose)
+    self.gripper.open(speed=100)
+    self.moveToPose(pre_pose)
+    self.moveToHome()
+
+  def moveToJointTraj(self, traj):
+    for pos in traj.points:
+      joint_state = JointState(
+        position=pos.positions,
+        velocity=(np.array(pos.velocities) * 0.1).tolist(),
+      )
+      self.joint_cmd_pub.publish(joint_state)
     self.waitUntilNotMoving()
 
   def moveToHome(self):
     ''' Moves the robot to the home position. '''
-    current_joint_pos = copy.copy(self.joint_positions)
-    target_joint_pos = self.home_joint_pos
+    self.moveit_group.clear_pose_targets()
+    self.moveit_group.set_joint_value_target(self.home_joint_pos)
+    success, traj, planning_time, err = self.moveit_group.plan()
 
-    speed = 0.25
-    max_disp = np.max(np.abs(target_joint_pos-current_joint_pos))
-    end_time = max_disp / speed
+    print(len(traj.joint_trajectory.points))
 
-    traj = [InterpolatedUnivariateSpline([0.,end_time],[current_joint_pos[i], target_joint_pos[i]],k=1) for i in range(6)]
-    traj_vel = InterpolatedUnivariateSpline([0.,end_time/2, end_time], [0, 0.01, 0],k=1)
-    start_time, loop_time = time.time(), 0
-    while loop_time < end_time:
-      loop_time = time.time() - start_time
-      joint_state = JointState(
-        position=[traj[j](loop_time) for j in range(6)],
-        velocity=[traj_vel(loop_time)] * 6,
-      )
-      self.joint_cmd_pub.publish(joint_state)
+    input('move')
 
-    joint_state = JointState(
-      position=[traj[j](loop_time) for j in range(6)],
-      velocity=[0] * 6
-    )
-    self.joint_cmd_pub.publish(joint_state)
-
-    self.moveToPose(self.home_pose)
+    self.moveToJointTraj(traj.joint_trajectory)
 
   def moveToOffsetHome(self):
     ''' Moves the robot to the offset home position. '''
-    current_joint_pos = copy.copy(self.joint_positions)
-    target_joint_pos = self.offset_home_joint_pos
+    self.moveit_group.clear_pose_targets()
+    self.moveit_group.set_joint_value_target(self.offset_home_joint_pos)
+    success, traj, planning_time, err = self.moveit_group.plan()
 
-    speed = 0.25
-    max_disp = np.max(np.abs(target_joint_pos-current_joint_pos))
-    end_time = max_disp / speed
+    print(len(traj.joint_trajectory.points))
 
-    traj = [InterpolatedUnivariateSpline([0.,end_time],[current_joint_pos[i], target_joint_pos[i]],k=1) for i in range(6)]
-    traj_vel = InterpolatedUnivariateSpline([0.,end_time/2, end_time], [0, 0.01, 0],k=1)
-    start_time, loop_time = time.time(), 0
-    while loop_time < end_time:
-      loop_time = time.time() - start_time
-      joint_state = JointState(
-        position=[traj[j](loop_time) for j in range(6)],
-        velocity=[traj_vel(loop_time)] * 6,
-      )
-      self.joint_cmd_pub.publish(joint_state)
+    input('move')
 
-    joint_state = JointState(
-      position=[traj[j](loop_time) for j in range(6)],
-      velocity=[0] * 6
-    )
-    self.joint_cmd_pub.publish(joint_state)
+    self.moveToJointTraj(traj.joint_trajectory)
 
   def getEEPose(self):
     ''' Get the current pose of the end effector. '''
@@ -143,27 +179,15 @@ class UR5e(object):
     return Pose(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w)
 
   def openGripper(self):
-    ''' Fully open the gripper. '''
-    self.gripper.openGripper()
+    self.gripper.open()
 
-  def getOpenRatio(self):
-    return None
+  def closeGripper(self):
+    self.gripper.close()
 
   def sendGripperCmd(self, p):
-    ''' Send a position command to the gripper.
-
-    Args:
-      p (float): The position (range [0,1]) to set the gripper to.
-
-    Returns:
-
-    '''
+    ''' Send a position command to the gripper. '''
     self.gripper.setPosition(p)
 
   def getGripperState(self):
-    ''' Get the current state of the gripper.
-
-    Returns:
-      float: The current state of the gripper (range [0,1]).
-    '''
+    ''' Get the current state of the gripper. '''
     return self.gripper.getCurrentPosition()

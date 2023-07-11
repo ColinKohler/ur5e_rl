@@ -32,16 +32,17 @@ class BaseEnv(object):
   def reset(self):
     self.resetWorkspace()
     self.ur5e.reset()
-    #time.sleep(1) # TODO: Best to not hardcode this
     self.force_sensor.reset()
     self.num_steps = 0
 
     return self.getObservation()
 
   def step(self, action):
+    p, x, y, z, rz = action
+
     target_pose = self.getActionPose(action)
     self.ur5e.moveToPose(target_pose)
-    #self.ur5e.sendGripperCmd(p)
+    self.ur5e.sendGripperCmd(p)
     self.num_steps += 1
 
     obs = self.getObservation()
