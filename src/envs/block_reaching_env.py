@@ -39,11 +39,14 @@ class BlockReachingEnv(BaseEnv):
     self.ur5e.moveToHome()
 
   def checkTermination(self, obs):
-    is_touching_block = self.touchingBlock(obs)
-    return is_touching_block or self.num_steps >= self.max_steps
+    is_near_block = self.isGripperNearBlock()
+    return self.num_steps >= self.max_steps
 
   def getReward(self, obs):
-    return float(self.touchingBlock(obs))
+    return float(self.isGripperNearBlock())
+
+  def isGripperNearBlock(self):
+    return False
 
   def touchingBlock(self, obs):
     avg_force = list()

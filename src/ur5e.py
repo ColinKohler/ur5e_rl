@@ -46,7 +46,7 @@ class UR5e(object):
 
     self.pick_offset = 0.1
     self.place_offset = 0.1
-    self.gripper_offset = 0.1
+    self.gripper_offset = 0.12
 
     self.tf_proxy = TFProxy()
 
@@ -157,7 +157,7 @@ class UR5e(object):
     joint_disp = np.abs(joint_pos - current_joint_pos)
     max_disp = np.max(joint_disp)
     num_steps = max(int(max_disp // 0.05), 2)
-    print('{:.3f} -> {}'.format(max_disp, num_steps))
+    #print('{:.3f} -> {}'.format(max_disp, num_steps))
 
     #if np.any(np.array(joint_disp) > self.max_joint_disp):
     #  rospy.logerr('Requested movement is too large: {}.'.format(joint_disp))

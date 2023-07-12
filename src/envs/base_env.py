@@ -32,6 +32,7 @@ class BaseEnv(object):
   def reset(self):
     self.resetWorkspace()
     self.ur5e.reset()
+    time.sleep(1)
     self.force_sensor.reset()
     self.num_steps = 0
 

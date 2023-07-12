@@ -3,16 +3,20 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import ray
+import time
 import argparse
 import numpy as np
 from tqdm import tqdm
 
-from src.env import Env
+from src.envs.block_reaching_env import BlockReachingEnv
+from configs import *
+
 from midichlorians.replay_buffer import ReplayBuffer
 from midichlorians.shared_storage import SharedStorage
 from midichlorians.data_generator import EpisodeHistory
 from midichlorians.trainer import Trainer
-from midichlorians.configs import *
+
+from bulletarm_baselines.logger.logger import RayLogger
 
 def load(checkpoint):
   pass
@@ -36,23 +40,22 @@ def train(config, checkpoint):
   trainer = Trainer.options(num_cpus=0, num_gpus=1.0).remote(checkpoint, config)
   replay_buffer = ReplayBuffer.options(num_cpus=0, num_gpus=0).remote(
     checkpoint,
-    dict(),
+    dict(), # TODO: Update this to point to the expert data buffer to load at init
     config
   )
   shared_storage = SharedStorage.remote(checkpoint, config)
   shared_storage.setInfo.remote('terminate', False)
 
-  env = Env(config)
+  env = BlockReachingEnv(config)
   time.sleep(1)
 
-  eps_history = None
+  eps_history = EpisodeHistory(is_expert=False)
   obs = env.reset()
   done = False
 
   pbar = tqdm(total=config.training_steps)
   next_batch = replay_buffer.sample.remote(shared_storage)
-  for training_step in config.training_steps:
-
+  for training_step in range(config.training_steps):
     if done:
       replay_buffer.add.remote(eps_history, shared_storage)
       logger.logTrainingEpisode.remote(eps_history.reward_history)
@@ -61,13 +64,16 @@ def train(config, checkpoint):
       eps_history = EpisodeHistory(is_expert=False)
       eps_history.logStep(obs[0], obs[1], obs[2], np.array([0] * config.action_dim), 0, 0, 0, config.max_force)
 
-    action_idxs, action, value = ray.get(trainer.getAction.remote(obs))
-    idx_batch, batch = ray.get(next_batch)
-    next_batch = replay_buffer.sample.remote(shared_storage)
+    #action_idxs, action, value = ray.get(trainer.getAction.remote(obs))
+    #idx_batch, batch = ray.get(next_batch)
+    #next_batch = replay_buffer.sample.remote(shared_storage)
+    action_idxs = np.array([1, 0, 0, 0, 0])
+    action = np.array([1, 0, 0, 0, 0])
+    value = 0
     obs, reward, done = env.step(action)
 
-    td_error, loss = trainer.updateWeights(batch, shared_storage, logger)
-    replay_buffer.updatePriorities.remote(td_error.cpu(), idx_batch)
+    #td_error, loss = trainer.updateWeights(batch, shared_storage, logger)
+    #replay_buffer.updatePriorities.remote(td_error.cpu(), idx_batch)
     eps_history.logStep(obs[0], obs[1], obs[2], action_idxs, value, reward, done, config.max_force)
 
     vision, force, proprio = obs
@@ -98,5 +104,5 @@ if __name__ == '__main__':
   config = BlockReachingConfig(equivariant=True, vision_size=64, results_path=args.results_path)
 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
-  train(config, args.checkpoint())
+  train(config, args.checkpoint)
   ray.shutdown()

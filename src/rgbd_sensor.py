@@ -38,8 +38,8 @@ class RGBDSensor(object):
     depth[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), depth[~mask])
 
     # Resize images
-    depth = skimage.transform.resize(depth[:,200:-200], (self.vision_size, self.vision_size))
-    rgb = skimage.transform.resize(rgb[:,200:-200,:], (self.vision_size, self.vision_size))
+    depth = skimage.transform.resize(depth[50:-50,100:-100], (self.vision_size, self.vision_size))
+    rgb = skimage.transform.resize(rgb[50:-50,100:-100,:], (self.vision_size, self.vision_size))
 
     # Remove depth past the table
     table_mask = depth > 1.0

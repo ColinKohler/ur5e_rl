@@ -11,10 +11,10 @@ class ForceSensor(object):
     self.tf_proxy = tf_proxy
 
     # define bandpass filter parameters
-    fl = [0.0] * 6
-    fh = [30.0] * 6
-    fs = 500
-    self.filter = PythonBPF(fs, fl, fh)
+    self.fl = [0.0] * 6
+    self.fh = [30.0] * 6
+    self.fs = 500
+    self.filter = PythonBPF(self.fs, self.fl, self.fh)
 
     self.initial_force = None
     self.force_history = [[0, 0, 0, 0, 0, 0]] * self.force_obs_len
@@ -40,6 +40,7 @@ class ForceSensor(object):
     self.force_history.append(np.array(self.filter.filter(current_wrench)))
 
   def reset(self):
+    self.filter = PythonBPF(self.fs, self.fl, self.fh)
     self.initial_force = None
     self.force_history = [[0, 0, 0, 0, 0, 0]] * self.force_obs_len
 
