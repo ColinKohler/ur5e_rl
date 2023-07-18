@@ -57,9 +57,9 @@ class UR5e(object):
 
     # MoveIt Group
     self.moveit_group = moveit_commander.MoveGroupCommander(self.group_name)
-    self.moveit_group.set_planning_time = 0.1
-    #self.moveit_group.set_goal_position_tolerance(0.01)
-    #self.moveit_group.set_goal_orientation_tolerance(0.01)
+    self.moveit_group.set_planning_time = 1.0
+    self.moveit_group.set_goal_position_tolerance(0.01)
+    self.moveit_group.set_goal_orientation_tolerance(0.01)
 
     # MoveIt Planning Scene
     self.moveit_scene = moveit_commander.PlanningSceneInterface()
@@ -68,7 +68,7 @@ class UR5e(object):
     table_pose.header.frame_id = "base_link"
     table_pose.pose.orientation.w = 1.0
     table_pose.pose.position.y = 0.6
-    table_pose.pose.position.z = -0.04
+    table_pose.pose.position.z = -0.10
     self.moveit_scene.add_box('table', table_pose, size=(0.75, 1.2, 0.05))
 
     roof_pose = PoseStamped()

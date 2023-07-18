@@ -3,6 +3,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import ray
+import signal
 import time
 import shutil
 import argparse
@@ -19,9 +20,6 @@ from midichlorians.data_generator import EpisodeHistory
 from midichlorians.trainer import Trainer
 
 from bulletarm_baselines.logger.logger import RayLogger
-
-def load(checkpoint):
-  pass
 
 def train(config, checkpoint):
   # Initial checkpoint
@@ -63,6 +61,17 @@ def train(config, checkpoint):
 
   shared_storage = SharedStorage.remote(checkpoint, config)
   shared_storage.setInfo.remote('terminate', False)
+
+  # Interupt signal handler to save on exit
+  def saveOnInt(signum, frame):
+    buffer = ray.get(replay_buffer.getBuffer.remote())
+    ray.get(trainer.saveWeights.remote(shared_storage))
+    ray.get(shared_storage.saveReplayBuffer.remote(buffer))
+    ray.get(shared_storage.saveCheckpoint.remote())
+    ray.get(logger.exportData.remote())
+    time.sleep(10)
+    ray.shutdown()
+  signal.signal(signal.SIGINT, saveOnInt)
 
   env = BlockReachingEnv(config)
   time.sleep(1)
@@ -124,7 +133,6 @@ if __name__ == '__main__':
   parser.add_argument('--checkpoint', type=str, default=None,
     help='Path to the checkpoint to load.')
   args = parser.parse_args()
-
 
   config = BlockReachingConfig(equivariant=True, vision_size=64, results_path=args.results_path)
 
