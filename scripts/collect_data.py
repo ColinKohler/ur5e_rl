@@ -3,6 +3,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import ray
+import shutil
 import matplotlib.pyplot as plt
 import time
 import rospy
@@ -10,16 +11,14 @@ import copy
 import numpy as np
 from scipy.ndimage import rotate
 
-from src.env import Env
 from midichlorians.replay_buffer import ReplayBuffer
 from midichlorians.shared_storage import SharedStorage
 from midichlorians.data_generator import EpisodeHistory
-from src.block_reaching_env import BlockReachingEnv
+from src.envs.block_reaching_env import BlockReachingEnv
 
 from configs import *
 
 if __name__ == '__main__':
-
   checkpoint = {
     'weights' : None,
     'optimizer_state' : None,
@@ -27,7 +26,11 @@ if __name__ == '__main__':
     'num_eps' : 0,
     'num_steps' : 0,
   }
-  config = BlockReachingConfig(False, 64, results_path='block_centering')
+  config = BlockReachingConfig(False, 64, results_path='10_expert')
+
+  if os.path.exists(config.results_path):
+    shutil.rmtree(config.results_path)
+  os.makedirs(config.results_path)
 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
 
@@ -49,6 +52,7 @@ if __name__ == '__main__':
       eps_history.logStep(obs[0], obs[1], obs[2], action, 0, reward, done, config.max_force)
       print('reward: {} | done: {}'.format(reward, done))
     elif cmd_action == 'q':
+      replay_buffer.add.remote(eps_history, shared_storage)
       break
     elif cmd_action == 'r':
       if eps_history is not None:
@@ -63,11 +67,12 @@ if __name__ == '__main__':
         print('Invalid action given. Required format: p x y z r')
         continue
 
+      p = float(cmd_action[0])
       dx = float(cmd_action[1]) * config.dpos
       dy = float(cmd_action[2]) * config.dpos
       dz = float(cmd_action[3]) * config.dpos
       dr = float(cmd_action[4]) * config.drot
-      action = [0, dx, dy, dz, dr]
+      action = [p, dx, dy, dz, dr]
 
       obs, reward, done = env.step(action)
       print('reward: {} | done: {}'.format(reward, done))

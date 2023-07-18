@@ -34,25 +34,21 @@ class BlockReachingEnv(BaseEnv):
 
     # Pick and place the block at the new pose
     self.ur5e.moveToHome()
-    self.ur5e.pick(current_block_pose)
+    block_picked = False
+    while not block_picked:
+      self.ur5e.pick(current_block_pose)
+      block_picked = not self.ur5e.gripper.isClosed()
     self.ur5e.place(self.block_pose)
     self.ur5e.moveToHome()
 
   def checkTermination(self, obs):
-    is_near_block = self.isGripperNearBlock()
-    return self.num_steps >= self.max_steps
+    return super().checkTermination() or self.isGripperNearBlock()
 
   def getReward(self, obs):
     return float(self.isGripperNearBlock())
 
   def isGripperNearBlock(self):
-    return False
-
-  def touchingBlock(self, obs):
-    avg_force = list()
-    for i in range(6):
-      avg_force.append(np.convolve(obs[1][:,i], np.ones(10), 'valid') / 10)
-    avg_force = np.array(avg_force).transpose(1, 0)
-    axis_max = np.max(avg_force, axis=0)
-    # NOTE: Currently this only works for top down touching.
-    return obs[2][3] >= 0.0 and axis_max[2] >= 2.0
+    current_pos = self.current_pose.getPosition()
+    block_pos = self.block_pose.getPosition()
+    return np.linalg.norm(np.array(current_pos[:2]) - np.array(block_pos[:2])) < 0.05 and \
+           np.abs(current_pos[2] - block_pos[2]) < 0.15

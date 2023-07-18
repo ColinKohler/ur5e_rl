@@ -36,7 +36,7 @@ class UR5e(object):
 
     self.home_joint_pos = (np.pi/180)*np.array([76., -84., 90., -96., -90., 165.])
     self.home_pose = Pose(0, 0.55, 0.25, 0.5, 0.5, -0.5, 0.5)
-    self.offset_home_joint_pos = (np.pi/180)*np.array([124., -84., 90., -96., -90., 165.])
+    self.offset_home_joint_pos = (np.pi/180)*np.array([100., -84., 90., -96., -90., 165.])
     self.max_joint_disp = np.array([0.2, 0.2, 0.2, 0.4, 0.4, 0.6])
 
     self.gripper = Gripper()
@@ -58,8 +58,8 @@ class UR5e(object):
     # MoveIt Group
     self.moveit_group = moveit_commander.MoveGroupCommander(self.group_name)
     self.moveit_group.set_planning_time = 0.1
-    self.moveit_group.set_goal_position_tolerance(0.01)
-    self.moveit_group.set_goal_orientation_tolerance(0.01)
+    #self.moveit_group.set_goal_position_tolerance(0.01)
+    #self.moveit_group.set_goal_orientation_tolerance(0.01)
 
     # MoveIt Planning Scene
     self.moveit_scene = moveit_commander.PlanningSceneInterface()
@@ -68,7 +68,7 @@ class UR5e(object):
     table_pose.header.frame_id = "base_link"
     table_pose.pose.orientation.w = 1.0
     table_pose.pose.position.y = 0.6
-    table_pose.pose.position.z = -0.03
+    table_pose.pose.position.z = -0.04
     self.moveit_scene.add_box('table', table_pose, size=(0.75, 1.2, 0.05))
 
     roof_pose = PoseStamped()
@@ -98,6 +98,9 @@ class UR5e(object):
     pre_pick_pose = copy.deepcopy(pose)
     pre_pick_pose.pos[2] = pre_pick_pose.pos[2] + self.gripper_offset + self.pick_offset
 
+    self.gripper.open(speed=100)
+    self.gripper.waitUntilNotMoving()
+
     self.moveToPose(pre_pick_pose)
     self.moveToPose(pick_pose)
 
@@ -119,6 +122,16 @@ class UR5e(object):
 
     self.gripper.open(speed=100)
     self.gripper.waitUntilNotMoving()
+
+    self.moveToPose(pre_place_pose)
+    self.moveToHome()
+
+  def reach(self, pose):
+    place_pose = copy.deepcopy(pose)
+    place_pose.pos[2] = pose.pos[2] + self.gripper_offset
+
+    pre_place_pose = copy.deepcopy(pose)
+    pre_place_pose.pos[2] = pre_place_pose.pos[2] + self.gripper_offset + self.place_offset
 
     self.moveToPose(pre_place_pose)
     self.moveToHome()
@@ -163,15 +176,15 @@ class UR5e(object):
     #  rospy.logerr('Requested movement is too large: {}.'.format(joint_disp))
     #  return
 
-    traj_pos = np.linspace(current_joint_pos, joint_pos, num_steps)
-    traj_vel = np.linspace(current_joint_vel, joint_vel, num_steps)
+    traj_pos = np.linspace(current_joint_pos, joint_pos, num_steps)[1:]
+    traj_vel = np.linspace(current_joint_vel, joint_vel, num_steps)[1:]
     for point, vel in zip(traj_pos, traj_vel):
       joint_state = JointState(
         position=point,
         velocity=vel
       )
       self.joint_cmd_pub.publish(joint_state)
-      time.sleep(0.01)
+      time.sleep(0.008)
 
   def openGripper(self):
     self.gripper.open()

@@ -4,9 +4,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import ray
 import time
+import shutil
 import argparse
 import numpy as np
 from tqdm import tqdm
+import pickle
 
 from src.envs.block_reaching_env import BlockReachingEnv
 from configs import *
@@ -22,6 +24,7 @@ def load(checkpoint):
   pass
 
 def train(config, checkpoint):
+  # Initial checkpoint
   checkpoint = {
     'weights' : None,
     'optimizer_state' : None,
@@ -31,6 +34,12 @@ def train(config, checkpoint):
     'terminate' : False,
   }
 
+  # Create log dir
+  if os.path.exists(config.results_path):
+    shutil.rmtree(config.results_path)
+  os.makedirs(config.results_path)
+
+  # Start logger and trainer
   logger = RayLogger.options(num_cpus=0, num_gpus=0).remote(
     config.results_path,
     config.__dict__,
@@ -38,11 +47,20 @@ def train(config, checkpoint):
     num_eval_eps=0
   )
   trainer = Trainer.options(num_cpus=0, num_gpus=1.0).remote(checkpoint, config)
+
+  # Load replay buffer with expert data
+  # TODO: This should not be hard coded
+  expert_data_path = '/home/helpinghands/workspace/data/block_reaching/10_expert/replay_buffer.pkl'
+  with open(expert_data_path, 'rb') as f:
+    data = pickle.load(f)
+  checkpoint['num_eps'] = data['num_eps']
+  checkpoint['num_steps'] = data['num_steps']
   replay_buffer = ReplayBuffer.options(num_cpus=0, num_gpus=0).remote(
     checkpoint,
-    dict(), # TODO: Update this to point to the expert data buffer to load at init
+    data['buffer'],
     config
   )
+
   shared_storage = SharedStorage.remote(checkpoint, config)
   shared_storage.setInfo.remote('terminate', False)
 
@@ -64,19 +82,26 @@ def train(config, checkpoint):
       eps_history = EpisodeHistory(is_expert=False)
       eps_history.logStep(obs[0], obs[1], obs[2], np.array([0] * config.action_dim), 0, 0, 0, config.max_force)
 
-    #action_idxs, action, value = ray.get(trainer.getAction.remote(obs))
-    #idx_batch, batch = ray.get(next_batch)
-    #next_batch = replay_buffer.sample.remote(shared_storage)
-    action_idxs = np.array([1, 0, 0, 0, 0])
-    action = np.array([1, 0, 0, 0, 0])
-    value = 0
-    obs, reward, done = env.step(action)
+    action_idxs, action, value = ray.get(trainer.getAction.remote(obs))
+    idx_batch, batch = ray.get(next_batch)
+    next_batch = replay_buffer.sample.remote(shared_storage)
+    obs, reward, done = env.step(action[0].tolist())
 
-    #td_error, loss = trainer.updateWeights(batch, shared_storage, logger)
-    #replay_buffer.updatePriorities.remote(td_error.cpu(), idx_batch)
-    eps_history.logStep(obs[0], obs[1], obs[2], action_idxs, value, reward, done, config.max_force)
+    td_error, loss = ray.get(trainer.updateWeights.remote(batch, replay_buffer, shared_storage, logger))
+    replay_buffer.updatePriorities.remote(td_error.cpu(), idx_batch)
+    eps_history.logStep(
+        obs[0],
+        obs[1],
+        obs[2],
+        action_idxs.squeeze().numpy(),
+        value.item(),
+        reward,
+        done,
+        config.max_force
+    )
 
     vision, force, proprio = obs
+    logger.writeLog.remote()
     pbar.update(1)
 
   # Saving

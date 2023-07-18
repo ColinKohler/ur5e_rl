@@ -5,6 +5,7 @@ import copy
 import numpy as np
 import scipy.ndimage
 import quaternion
+from collections import deque
 
 from src.ur5e import UR5e
 from src.rgbd_sensor import RGBDSensor
@@ -28,13 +29,18 @@ class BaseEnv(object):
     self.force_sensor = ForceSensor(self.force_obs_len, self.tf_proxy)
 
     self.num_steps = 0
+    self.prev_poses = deque(maxlen=5)
 
   def reset(self):
     self.resetWorkspace()
     self.ur5e.reset()
     time.sleep(1)
     self.force_sensor.reset()
+
     self.num_steps = 0
+    self.prev_poses = deque(maxlen=5)
+    self.current_pose = self.ur5e.getEEPose()
+    self.prev_poses.append(self.current_pose.getPosition())
 
     return self.getObservation()
 
@@ -46,6 +52,10 @@ class BaseEnv(object):
     self.ur5e.sendGripperCmd(p)
     self.num_steps += 1
 
+    self.ur5e.waitUntilNotMoving()
+    self.current_pose = self.ur5e.getEEPose()
+    self.prev_poses.append(self.current_pose.getPosition())
+
     obs = self.getObservation()
     done = self.checkTermination(obs)
     reward = self.getReward(obs)
@@ -54,9 +64,8 @@ class BaseEnv(object):
 
   def getActionPose(self, action):
     p, x, y, z, rz = action
-    current_pose = self.ur5e.getEEPose()
-    current_pos = current_pose.getPosition()
-    current_rot = np.array(current_pose.getOrientationQuaternion())
+    current_pos = self.current_pose.getPosition()
+    current_rot = np.array(self.current_pose.getOrientationQuaternion())
     current_rot = np.quaternion(*current_rot[[3,0,1,2]])
 
     pos = np.array(current_pos) + np.array([x,y,z])
@@ -64,22 +73,23 @@ class BaseEnv(object):
     delta_rot = np.quaternion(*delta_rot[[3,0,1,2]])
     rot = quaternion.as_float_array(delta_rot * current_rot)
     rot = rot[[1,2,3,0]]
+    rot = [0.5, 0.5, -0.5, 0.5]
 
     pos[0] = np.clip(pos[0], self.workspace[0, 0], self.workspace[0, 1])
     pos[1] = np.clip(pos[1], self.workspace[1, 0], self.workspace[1, 1])
     pos[2] = np.clip(pos[2], self.workspace[2, 0], self.workspace[2, 1])
     # TODO: This is not the correct way to clip a quaternion
     # TODO: These limits seem wrong but IK fails around here
-    if rot[0] < 0:
-      rot[0] = 0.708
-    else:
-      rot[0] = np.clip(rot[0], 0.1548, 0.708)
-    rot[1] = np.clip(rot[1], 0.05, 0.6786)
-    if rot[2] > 0:
-      rot[2] = -0.705
-    else:
-      rot[2] = np.clip(rot[2], -0.702, -0.217)
-    rot[3] = np.clip(rot[3], 0.05, 0.684)
+    #if rot[0] < 0:
+    #  rot[0] = 0.708
+    #else:
+    #  rot[0] = np.clip(rot[0], 0.1548, 0.708)
+    #rot[1] = np.clip(rot[1], 0.05, 0.6786)
+    #if rot[2] > 0:
+    #  rot[2] = -0.705
+    #else:
+    #  rot[2] = np.clip(rot[2], -0.702, -0.217)
+    #rot[3] = np.clip(rot[3], 0.05, 0.684)
 
     target_pose = Pose(*pos, *rot)
 
@@ -108,7 +118,12 @@ class BaseEnv(object):
     return None
 
   def checkTermination(self):
-    return None
+    prev_pose_diff = np.linalg.norm(np.array(self.prev_poses) - self.prev_poses[0], axis=1)
+    is_stuck = np.all(prev_pose_diff <= 1e-2) and len(self.prev_poses) == 5
+    if is_stuck:
+      print('gripper is stuck')
+    is_max_step = self.num_steps >= self.max_steps
+    return is_max_step or is_stuck
 
   def getReward(self):
     return None
