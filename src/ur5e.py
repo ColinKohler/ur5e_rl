@@ -35,14 +35,13 @@ class UR5e(object):
     self.joint_reorder = [2,1,0,3,4,5]
 
     self.home_joint_pos = (np.pi/180)*np.array([76., -84., 90., -96., -90., 165.])
-    self.home_pose = Pose(0, 0.55, 0.25, 0.5, 0.5, -0.5, 0.5)
-    self.offset_home_joint_pos = (np.pi/180)*np.array([100., -84., 90., -96., -90., 165.])
+    self.home_pose = Pose(0, 0.55, 0.2+0.12, 0.5, 0.5, -0.5, 0.5)
+    self.offset_home_joint_pos = (np.pi/180)*np.array([120., -84., 90., -96., -90., 165.])
     self.max_joint_disp = np.array([0.2, 0.2, 0.2, 0.4, 0.4, 0.6])
 
     self.gripper = Gripper()
     self.gripper.reset()
     self.gripper.activate()
-    self.action_sleep = 1.5
 
     self.pick_offset = 0.1
     self.place_offset = 0.1
@@ -58,8 +57,8 @@ class UR5e(object):
     # MoveIt Group
     self.moveit_group = moveit_commander.MoveGroupCommander(self.group_name)
     self.moveit_group.set_planning_time = 1.0
-    self.moveit_group.set_goal_position_tolerance(0.01)
-    self.moveit_group.set_goal_orientation_tolerance(0.01)
+    #self.moveit_group.set_goal_position_tolerance(0.01)
+    #self.moveit_group.set_goal_orientation_tolerance(0.01)
 
     # MoveIt Planning Scene
     self.moveit_scene = moveit_commander.PlanningSceneInterface()
@@ -85,7 +84,8 @@ class UR5e(object):
 
   def moveToHome(self):
     ''' Moves the robot to the home position. '''
-    self.moveToJointPose(self.home_joint_pos)
+    #self.moveToJointPose(self.home_joint_pos)
+    self.moveToPose(self.home_pose)
 
   def moveToOffsetHome(self):
     ''' Moves the robot to the offset home position. '''

@@ -8,18 +8,25 @@ import time
 import shutil
 import argparse
 import numpy as np
+import torch
 from tqdm import tqdm
 import pickle
 
 from src.envs.block_reaching_env import BlockReachingEnv
 from configs import *
 
-from midichlorians.replay_buffer import ReplayBuffer
-from midichlorians.shared_storage import SharedStorage
-from midichlorians.data_generator import EpisodeHistory
-from midichlorians.trainer import Trainer
+from svfl.replay_buffer import ReplayBuffer
+from svfl.shared_storage import SharedStorage
+from svfl.data_generator import EpisodeHistory
+from svfl.trainer import Trainer
 
 from bulletarm_baselines.logger.logger import RayLogger
+
+def waitForRayTasks(sleep_time_init=2, sleep_time_loop=0.4):
+  time.sleep(sleep_time_init)
+  while (ray.cluster_resources() != ray.available_resources()):
+    time.sleep(sleep_time_loop)
+  return
 
 def train(config, checkpoint):
   # Initial checkpoint
@@ -69,15 +76,34 @@ def train(config, checkpoint):
     ray.get(shared_storage.saveReplayBuffer.remote(buffer))
     ray.get(shared_storage.saveCheckpoint.remote())
     ray.get(logger.exportData.remote())
-    time.sleep(10)
+    #waitForRayTasks()
     ray.shutdown()
   signal.signal(signal.SIGINT, saveOnInt)
 
   env = BlockReachingEnv(config)
+  planner = BlockReachingPlanner(env, config)
   time.sleep(1)
 
-  eps_history = EpisodeHistory(is_expert=False)
+  # ---------------------
+  # Pretraining
+  # ---------------------
+  if config.pre_training_steps > 0:
+    print('Pretrianing for {} steps...'.format(config.pre_training_steps))
+    pbar = tqdm(total=config.pre_training_steps)
+    for pre_training_step in range(config.pre_training_steps):
+      next_batch = replay_buffer.sample.remote(shared_storage)
+      idx_batch, batch = ray.get(next_batch)
+      td_error, loss = ray.get(trainer.updateWeights.remote(batch, replay_buffer, shared_storage, logger))
+      replay_buffer.updatePriorities.remote(td_error.cpu(), idx_batch)
+      pbar.update(1)
+
+  # ---------------------
+  # Training
+  # ---------------------
+  print('Training for {} steps...'.format(config.training_steps))
   obs = env.reset()
+  eps_history = EpisodeHistory(is_expert=False)
+  eps_history.logStep(obs[0], obs[1], obs[2], np.array([0] * config.action_dim), 0, 0, 0, config.max_force)
   done = False
 
   pbar = tqdm(total=config.training_steps)
@@ -85,31 +111,32 @@ def train(config, checkpoint):
   for training_step in range(config.training_steps):
     if done:
       replay_buffer.add.remote(eps_history, shared_storage)
-      logger.logTrainingEpisode.remote(eps_history.reward_history)
+      logger.logTrainingEpisode.remote(eps_history.reward_history, eps_history.value_history)
 
       obs = env.reset()
       eps_history = EpisodeHistory(is_expert=False)
       eps_history.logStep(obs[0], obs[1], obs[2], np.array([0] * config.action_dim), 0, 0, 0, config.max_force)
 
-    action_idxs, action, value = ray.get(trainer.getAction.remote(obs))
-    idx_batch, batch = ray.get(next_batch)
-    next_batch = replay_buffer.sample.remote(shared_storage)
+    action_idx, action, value = ray.get(trainer.getAction.remote(obs))
     obs, reward, done = env.step(action[0].tolist())
 
-    td_error, loss = ray.get(trainer.updateWeights.remote(batch, replay_buffer, shared_storage, logger))
-    replay_buffer.updatePriorities.remote(td_error.cpu(), idx_batch)
+    for _ in range(config.training_steps_per_action):
+      idx_batch, batch = ray.get(next_batch)
+      td_error, loss = ray.get(trainer.updateWeights.remote(batch, replay_buffer, shared_storage, logger))
+      replay_buffer.updatePriorities.remote(td_error.cpu(), idx_batch)
+      next_batch = replay_buffer.sample.remote(shared_storage)
+
+    # Logging
     eps_history.logStep(
         obs[0],
         obs[1],
         obs[2],
-        action_idxs.squeeze().numpy(),
+        action_idx.squeeze().numpy(),
         value.item(),
         reward,
         done,
         config.max_force
     )
-
-    vision, force, proprio = obs
     logger.writeLog.remote()
     pbar.update(1)
 
@@ -121,14 +148,14 @@ def train(config, checkpoint):
   ray.get(logger.exportData.remote())
 
 if __name__ == '__main__':
-  parser=  argparse.ArgumentParser()
+  parser = argparse.ArgumentParser()
   parser.add_argument('task', type=str,
     help='Task to train on.')
   parser.add_argument('--num_gpus', type=int, default=1,
     help='Number of GPUs to use for training.')
   parser.add_argument('--results_path', type=str, default=None,
     help='Path to save results & logs to while training. Defaults to current timestamp.')
-  parser.add_argument('--encoder', type=str, default='depth+force+proprio',
+  parser.add_argument('--encoder', type=str, default='vision+force+proprio',
     help='Type of latent encoder to use')
   parser.add_argument('--checkpoint', type=str, default=None,
     help='Path to the checkpoint to load.')

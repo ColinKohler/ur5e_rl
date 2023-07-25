@@ -10,5 +10,6 @@ if __name__ == '__main__':
 
   while not rospy.is_shutdown():
     br.sendTransform((0.02, 0.520, 1.140), (0.5, 0.5, -0.5, 0.5), rospy.Time.now(), "camera1_link", "base_link")
+    #br.sendTransform((0.02, 0.520, 1.140), (0.5, 0.5, -0.5, 0.5), rospy.Time.now(), "camera2_link", "base_link")
 
     rate.sleep()

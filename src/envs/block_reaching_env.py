@@ -38,6 +38,11 @@ class BlockReachingEnv(BaseEnv):
     while not block_picked:
       self.ur5e.pick(current_block_pose)
       block_picked = not self.ur5e.gripper.isClosed()
+      if not block_picked:
+        self.ur5e.moveToOffsetHome()
+        current_block_pose = self.getBlockPose()
+        current_block_pose.rot = [-0.5, -0.5, 0.5, -0.5]
+
     self.ur5e.place(self.block_pose)
     self.ur5e.moveToHome()
 

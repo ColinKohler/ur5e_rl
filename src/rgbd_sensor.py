@@ -12,9 +12,13 @@ class RGBDSensor(object):
   def __init__(self, vision_size):
     self.vision_size = vision_size
 
+    self.obs_pub = rospy.Publisher('/ur5e_rl/rgb_obs', Image, queue_size=1)
     self.rgb_sub = rospy.Subscriber('/camera2/color/image_raw', numpy_msg(Image), self.rgbCallback, queue_size=1)
     self.depth_sub = rospy.Subscriber('/camera2/depth/image_rect_raw', numpy_msg(Image), self.depthCallback, queue_size=1)
     self.bridge = CvBridge()
+
+    self.depth_min = 0.0
+    self.depth_max = 0.02
 
     # Wait for subscriber to get data
     self.rgb_data = None
@@ -38,12 +42,15 @@ class RGBDSensor(object):
     depth[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), depth[~mask])
 
     # Resize images
-    depth = skimage.transform.resize(depth[50:-50,100:-100], (self.vision_size, self.vision_size))
-    rgb = skimage.transform.resize(rgb[50:-50,100:-100,:], (self.vision_size, self.vision_size))
+    depth = skimage.transform.resize(depth[65:-65,125:-125], (self.vision_size, self.vision_size))
+    rgb = skimage.transform.resize(rgb[65:-65,125:-125,:], (self.vision_size, self.vision_size))
 
-    # Remove depth past the table
-    table_mask = depth > 1.0
-    depth[table_mask] = 1
+    # Process depth image
+    depth[depth > self.depth_max] = self.depth_max
+    depth = (depth - self.depth_min) / (self.depth_max - self.depth_min)
+
+    # Publish RGB obs for debugging
+    self.obs_pub.publish(self.bridge.cv2_to_imgmsg(rgb))
 
     # Reshape and concatenate
     depth = depth.reshape(1, self.vision_size, self.vision_size)

@@ -3,22 +3,25 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
 import ray
+import argparse
 import shutil
-import matplotlib.pyplot as plt
 import time
 import rospy
 import copy
 import numpy as np
-from scipy.ndimage import rotate
+from tqdm import tqdm
 
-from midichlorians.replay_buffer import ReplayBuffer
-from midichlorians.shared_storage import SharedStorage
-from midichlorians.data_generator import EpisodeHistory
 from src.envs.block_reaching_env import BlockReachingEnv
+from src.planners.block_reaching_planner import BlockReachingPlanner
+
+from svfl.replay_buffer import ReplayBuffer
+from svfl.shared_storage import SharedStorage
+from svfl.data_generator import EpisodeHistory
+from svfl.trainer import Trainer
 
 from configs import *
 
-if __name__ == '__main__':
+def collectData(config, num_expert_eps):
   checkpoint = {
     'weights' : None,
     'optimizer_state' : None,
@@ -26,13 +29,10 @@ if __name__ == '__main__':
     'num_eps' : 0,
     'num_steps' : 0,
   }
-  config = BlockReachingConfig(False, 64, results_path='10_expert')
 
   if os.path.exists(config.results_path):
     shutil.rmtree(config.results_path)
   os.makedirs(config.results_path)
-
-  ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
 
   shared_storage = SharedStorage.remote(checkpoint, config)
   replay_buffer = ReplayBuffer.options(num_cpus=0, num_gpus=0).remote(
@@ -40,48 +40,60 @@ if __name__ == '__main__':
     dict(),
     config
   )
+  trainer = Trainer.options(num_cpus=0, num_gpus=0.0).remote(checkpoint, config)
 
   env = BlockReachingEnv(config)
+  planner = BlockReachingPlanner(env, config)
   time.sleep(1)
 
-  eps_history = None
-  while not rospy.is_shutdown():
-    cmd_action = input('Action: ')
-    if not cmd_action:
-      obs, reward, done = env.step(action)
-      eps_history.logStep(obs[0], obs[1], obs[2], action, 0, reward, done, config.max_force)
-      print('reward: {} | done: {}'.format(reward, done))
-    elif cmd_action == 'q':
-      replay_buffer.add.remote(eps_history, shared_storage)
-      break
-    elif cmd_action == 'r':
-      if eps_history is not None:
-        replay_buffer.add.remote(eps_history, shared_storage)
+  num_eps = 0
+  print('Generating {} episodes of expert data...'.format(num_expert_eps))
 
-      obs = env.reset()
-      eps_history = EpisodeHistory(is_expert=True)
-      eps_history.logStep(obs[0], obs[1], obs[2], np.array([0] * config.action_dim), 0, 0, 0, config.max_force)
-    else:
-      cmd_action = cmd_action.split(' ')
-      if len(cmd_action) != 5:
-        print('Invalid action given. Required format: p x y z r')
-        continue
+  pbar = tqdm(total=num_expert_eps)
+  for expert_eps in range(num_expert_eps):
+    obs = env.reset()
+    eps_history = EpisodeHistory(is_expert=True)
+    eps_history.logStep(obs[0], obs[1], obs[2], np.array([0] * config.action_dim), 0, 0, 0, config.max_force)
+    done = False
 
-      p = float(cmd_action[0])
-      dx = float(cmd_action[1]) * config.dpos
-      dy = float(cmd_action[2]) * config.dpos
-      dz = float(cmd_action[3]) * config.dpos
-      dr = float(cmd_action[4]) * config.drot
-      action = [p, dx, dy, dz, dr]
+    while not done:
+      expert_action = planner.getNextAction()
+      action_idx, action = ray.get(trainer.convertPlanAction.remote(expert_action))
+      obs, reward, done = env.step(action.squeeze().tolist())
+      value = 0
 
-      obs, reward, done = env.step(action)
-      print('reward: {} | done: {}'.format(reward, done))
-      eps_history.logStep(obs[0], obs[1], obs[2], action, 0, reward, done, config.max_force)
+      # Log step
+      eps_history.logStep(
+        obs[0],
+        obs[1],
+        obs[2],
+        action_idx.squeeze().numpy(),
+        value,
+        reward,
+        done,
+        config.max_force
+      )
 
-    vision, force, proprio = obs
+    # Save expert episode to buffer
+    replay_buffer.add.remote(eps_history, shared_storage)
+    pbar.update(1)
 
   buffer = ray.get(replay_buffer.getBuffer.remote())
   ray.get(shared_storage.saveReplayBuffer.remote(copy.copy(buffer)))
   ray.get(shared_storage.saveCheckpoint.remote())
 
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument('task', type=str,
+    help='Task to train on.')
+  parser.add_argument('num_eps', type=int,
+    help='Number of expert episodes to generate.')
+  parser.add_argument('results_path', type=str,
+    help='Path to save results & logs to while training.')
+  args = parser.parse_args()
+
+  config = BlockReachingConfig(equivariant=True, vision_size=64, results_path=args.results_path)
+
+  ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
+  collectData(config, args.num_eps)
   ray.shutdown()
