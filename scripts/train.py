@@ -28,7 +28,32 @@ def waitForRayTasks(sleep_time_init=2, sleep_time_loop=0.4):
     time.sleep(sleep_time_loop)
   return
 
-def train(config, checkpoint):
+def load(checkpoint, checkpoint_path=None, replay_buffer_path=None):
+  ''' Load the model checkpoint and replay buffer. '''
+  if checkpoint_path:
+    if os.path.exists(checkpoint_path):
+      checkpoint = torch.load(checkpoint_path)
+      print('Loading checkpoint from {}'.format(checkpoint_path))
+    else:
+      print('Checkpoint not found at {}'.format(checkpoint_path))
+
+  replay_buffer = dict()
+  if replay_buffer_path:
+    if os.path.exists(replay_buffer_path):
+      with open(replay_buffer_path, 'rb') as f:
+        data = pickle.load(f)
+
+      replay_buffer = data['buffer']
+      checkpoint['num_eps'] = data['num_eps']
+      checkpoint['num_steps'] = data['num_steps']
+
+      print('Loaded replay buffer at {}'.format(replay_buffer_path))
+    else:
+      print('Replay buffer not found at {}'.format(replay_buffer_path))
+
+  return checkpoint, replay_buffer
+
+def train(config, checkpoint_path, buffer_path):
   # Initial checkpoint
   checkpoint = {
     'weights' : None,
@@ -44,6 +69,23 @@ def train(config, checkpoint):
     shutil.rmtree(config.results_path)
   os.makedirs(config.results_path)
 
+  # Load checkpoint/replay buffer
+  if checkpoint_path:
+    checkpoint_path = os.path.join(config.root_path,
+                                   'block_reaching',
+                                   checkpoint_path,
+                                   'model.checkpoint')
+  if buffer_path:
+    buffer_path = os.path.join(config.root_path,
+                               'block_reaching',
+                               buffer_path,
+                               'replay_buffer.pkl')
+  checkpoint, data_buffer = load(
+    checkpoint,
+    checkpoint_path=checkpoint_path,
+    replay_buffer_path=buffer_path
+  )
+
   # Start logger and trainer
   logger = RayLogger.options(num_cpus=0, num_gpus=0).remote(
     config.results_path,
@@ -53,16 +95,9 @@ def train(config, checkpoint):
   )
   trainer = Trainer.options(num_cpus=0, num_gpus=1.0).remote(checkpoint, config)
 
-  # Load replay buffer with expert data
-  # TODO: This should not be hard coded
-  expert_data_path = '/home/helpinghands/workspace/data/block_reaching/10_expert/replay_buffer.pkl'
-  with open(expert_data_path, 'rb') as f:
-    data = pickle.load(f)
-  checkpoint['num_eps'] = data['num_eps']
-  checkpoint['num_steps'] = data['num_steps']
   replay_buffer = ReplayBuffer.options(num_cpus=0, num_gpus=0).remote(
     checkpoint,
-    data['buffer'],
+    data_buffer,
     config
   )
 
@@ -81,7 +116,6 @@ def train(config, checkpoint):
   signal.signal(signal.SIGINT, saveOnInt)
 
   env = BlockReachingEnv(config)
-  planner = BlockReachingPlanner(env, config)
   time.sleep(1)
 
   # ---------------------
@@ -159,10 +193,12 @@ if __name__ == '__main__':
     help='Type of latent encoder to use')
   parser.add_argument('--checkpoint', type=str, default=None,
     help='Path to the checkpoint to load.')
+  parser.add_argument('--buffer', type=str, default=None,
+    help='Path to the replay buffer to load')
   args = parser.parse_args()
 
-  config = BlockReachingConfig(equivariant=True, vision_size=64, results_path=args.results_path)
+  config = BlockReachingConfig(equivariant=True, vision_size=128, results_path=args.results_path)
 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
-  train(config, args.checkpoint)
+  train(config, args.checkpoint, args.buffer)
   ray.shutdown()

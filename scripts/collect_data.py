@@ -10,6 +10,7 @@ import rospy
 import copy
 import numpy as np
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 from src.envs.block_reaching_env import BlockReachingEnv
 from src.planners.block_reaching_planner import BlockReachingPlanner
@@ -62,6 +63,21 @@ def collectData(config, num_expert_eps):
       obs, reward, done = env.step(action.squeeze().tolist())
       value = 0
 
+      #p = 12
+      #max_force = 10
+      #norm_force = np.clip(obs[1], -max_force, max_force) / max_force
+      #fig, ax = plt.subplots(nrows=1, ncols=3)
+      #ax[0].imshow(obs[0][3].squeeze(), cmap='gray')
+      #ax[1].imshow(obs[0][:3].transpose(1,2,0))
+      #ax[2].plot(norm_force[:,0], label='Fx')
+      #ax[2].plot(norm_force[:,1], label='Fy')
+      #ax[2].plot(norm_force[:,2], label='Fz')
+      #ax[2].plot(norm_force[:,3], label='Mx')
+      #ax[2].plot(norm_force[:,4], label='My')
+      #ax[2].plot(norm_force[:,5], label='Mz')
+      #fig.legend()
+      #plt.show()
+
       # Log step
       eps_history.logStep(
         obs[0],
@@ -92,7 +108,7 @@ if __name__ == '__main__':
     help='Path to save results & logs to while training.')
   args = parser.parse_args()
 
-  config = BlockReachingConfig(equivariant=True, vision_size=64, results_path=args.results_path)
+  config = BlockReachingConfig(equivariant=True, vision_size=128, results_path=args.results_path)
 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
   collectData(config, args.num_eps)

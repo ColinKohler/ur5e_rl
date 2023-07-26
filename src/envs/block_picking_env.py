@@ -7,10 +7,11 @@ from src.envs.base_env import BaseEnv
 import src.utils as utils
 from src.utils import Pose
 
-class BlockReachingEnv(BaseEnv):
+class BlockPickingEnv(BaseEnv):
   def __init__(self, config):
     super().__init__(config)
     self.max_steps = 50
+    self.pick_height = 0.2
 
   def getBlockPose(self):
     return utils.convertTfToPose(self.tf_proxy.lookupTransform('base_link', 'block'))
@@ -50,10 +51,8 @@ class BlockReachingEnv(BaseEnv):
     return super().checkTermination() or self.isGripperNearBlock()
 
   def getReward(self, obs):
-    return float(self.isGripperNearBlock())
+    gripper_z = self.current_pose.getPosition()[-1]
+    return float(self.isHoldingBlock() and gripper_z > self.pick_height)
 
   def isGripperNearBlock(self):
-    current_pos = self.current_pose.getPosition()
-    block_pos = self.block_pose.getPosition()
-    return np.linalg.norm(np.array(current_pos[:2]) - np.array(block_pos[:2])) < 0.07 and \
-           np.abs(current_pos[2] - block_pos[2]) < 0.15
+    return self.is_holding
