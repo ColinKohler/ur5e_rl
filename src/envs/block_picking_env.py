@@ -35,24 +35,37 @@ class BlockPickingEnv(BaseEnv):
 
     # Pick and place the block at the new pose
     self.ur5e.moveToHome()
+    print(self.ur5e.gripper.getForce())
+    # print(self.ur5e.getGripperState())
     block_picked = False
     while not block_picked:
       self.ur5e.pick(current_block_pose)
+      # print(self.isHoldingBlock())
+      print(self.ur5e.gripper.getForce())
       block_picked = not self.ur5e.gripper.isClosed()
       if not block_picked:
         self.ur5e.moveToOffsetHome()
         current_block_pose = self.getBlockPose()
         current_block_pose.rot = [-0.5, -0.5, 0.5, -0.5]
 
+    # print(self.isHoldingBlock())
+    # print(self.ur5e.getGripperState())
     self.ur5e.place(self.block_pose)
     self.ur5e.moveToHome()
 
   def checkTermination(self, obs):
-    return super().checkTermination() or self.isGripperNearBlock()
+    return super().checkTermination() or self.isHoldingBlock()
 
   def getReward(self, obs):
     gripper_z = self.current_pose.getPosition()[-1]
     return float(self.isHoldingBlock() and gripper_z > self.pick_height)
 
-  def isGripperNearBlock(self):
-    return self.is_holding
+  def isHoldingBlock(self):
+    print("pose")
+    # print(self.ur5e.gripper.getForce)
+    if self.ur5e.gripper.isClosed() :
+      print("no")
+    else:
+      if self.ur5e.getGripperState() <= 0.61:
+        print ("holding")
+    return True

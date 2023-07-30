@@ -97,3 +97,7 @@ class Gripper(object):
       if prev_pos == curr_pos:
         return
       prev_pos = curr_pos
+  
+  # status not giving gripper force rFR or rFO
+  def getForce(self):
+    return self.status

@@ -25,6 +25,7 @@ class BaseEnv(object):
 
     self.tf_proxy = TFProxy()
     self.ur5e = UR5e()
+    # self.current_pose = self.ur5e.getEEPose()
     self.rgbd_sensor = RGBDSensor(self.vision_size)
     self.force_sensor = ForceSensor(self.force_obs_len, self.tf_proxy)
 

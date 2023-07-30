@@ -13,6 +13,7 @@ from tqdm import tqdm
 import pickle
 
 from src.envs.block_reaching_env import BlockReachingEnv
+from src.envs.block_picking_env import BlockPickingEnv
 from configs import *
 
 from svfl.replay_buffer import ReplayBuffer
@@ -115,7 +116,8 @@ def train(config, checkpoint_path, buffer_path):
     ray.shutdown()
   signal.signal(signal.SIGINT, saveOnInt)
 
-  env = BlockReachingEnv(config)
+  # env = BlockReachingEnv(config)
+  env = BlockPickingEnv(config)
   time.sleep(1)
 
   # ---------------------
@@ -197,7 +199,8 @@ if __name__ == '__main__':
     help='Path to the replay buffer to load')
   args = parser.parse_args()
 
-  config = BlockReachingConfig(equivariant=True, vision_size=128, results_path=args.results_path)
+  # config = BlockReachingConfig(equivariant=True, vision_size=128, results_path=args.results_path)
+  config = BlockPickingConfig(equivariant=True, vision_size=128, results_path=args.results_path)
 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
   train(config, args.checkpoint, args.buffer)
