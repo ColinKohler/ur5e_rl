@@ -25,7 +25,6 @@ class BaseEnv(object):
 
     self.tf_proxy = TFProxy()
     self.ur5e = UR5e()
-    # self.current_pose = self.ur5e.getEEPose()
     self.rgbd_sensor = RGBDSensor(self.vision_size)
     self.force_sensor = ForceSensor(self.force_obs_len, self.tf_proxy)
 
@@ -49,7 +48,7 @@ class BaseEnv(object):
     p, x, y, z, rz = action
 
     target_pose = self.getActionPose(action)
-    self.ur5e.moveToPose(target_pose)
+    did_move = self.ur5e.moveToPose(target_pose)
     self.ur5e.sendGripperCmd(p)
     self.num_steps += 1
 
@@ -57,11 +56,14 @@ class BaseEnv(object):
     self.current_pose = self.ur5e.getEEPose()
     self.prev_poses.append(self.current_pose.getPosition())
 
-    obs = self.getObservation()
-    done = self.checkTermination(obs)
-    reward = self.getReward(obs)
+    self.obs = self.getObservation()
+    done = self.checkTermination()
+    reward = self.getReward()
 
-    return obs, reward, done
+    if not did_move:
+      done = True
+
+    return self.obs, reward, done
 
   def getActionPose(self, action):
     p, x, y, z, rz = action

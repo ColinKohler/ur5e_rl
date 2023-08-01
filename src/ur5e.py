@@ -145,7 +145,11 @@ class UR5e(object):
     self.moveit_group.clear_pose_targets()
     self.moveit_group.set_pose_target(pose.getPoseStamped())
     success, traj, planning_time, err = self.moveit_group.plan()
+    if not success:
+      return False
+
     self.moveToJointTraj(traj.joint_trajectory)
+    return True
 
   def moveToJointPose(self, joint_pos):
     ''' Move the end effector to the specified pose.

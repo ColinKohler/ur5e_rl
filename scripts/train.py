@@ -23,6 +23,16 @@ from svfl.trainer import Trainer
 
 from bulletarm_baselines.logger.logger import RayLogger
 
+TASK_CONFIGS = {
+  'block_reaching' : BlockReachingConfig,
+  'block_picking' : BlockPickingConfig,
+}
+
+TASKS = {
+  'block_reaching' : BlockReachingEnv,
+  'block_picking' : BlockPickingEnv,
+}
+
 def waitForRayTasks(sleep_time_init=2, sleep_time_loop=0.4):
   time.sleep(sleep_time_init)
   while (ray.cluster_resources() != ray.available_resources()):
@@ -54,7 +64,7 @@ def load(checkpoint, checkpoint_path=None, replay_buffer_path=None):
 
   return checkpoint, replay_buffer
 
-def train(config, checkpoint_path, buffer_path):
+def train(task, config, checkpoint_path, buffer_path):
   # Initial checkpoint
   checkpoint = {
     'weights' : None,
@@ -71,14 +81,19 @@ def train(config, checkpoint_path, buffer_path):
   os.makedirs(config.results_path)
 
   # Load checkpoint/replay buffer
+  log_path = None
   if checkpoint_path:
     checkpoint_path = os.path.join(config.root_path,
-                                   'block_reaching',
+                                   task,
                                    checkpoint_path,
                                    'model.checkpoint')
+    log_path =  os.path.join(config.root_path,
+                             task,
+                             checkpoint_path,
+                             'log_data.pkl')
   if buffer_path:
     buffer_path = os.path.join(config.root_path,
-                               'block_reaching',
+                               task,
                                buffer_path,
                                'replay_buffer.pkl')
   checkpoint, data_buffer = load(
@@ -92,7 +107,8 @@ def train(config, checkpoint_path, buffer_path):
     config.results_path,
     config.__dict__,
     checkpoint_interval=config.checkpoint_interval,
-    num_eval_eps=0
+    num_eval_eps=0,
+    log_file=log_path
   )
   trainer = Trainer.options(num_cpus=0, num_gpus=1.0).remote(checkpoint, config)
 
@@ -116,8 +132,7 @@ def train(config, checkpoint_path, buffer_path):
     ray.shutdown()
   signal.signal(signal.SIGINT, saveOnInt)
 
-  # env = BlockReachingEnv(config)
-  env = BlockPickingEnv(config)
+  env = TASKS[task](config)
   time.sleep(1)
 
   # ---------------------
@@ -199,9 +214,8 @@ if __name__ == '__main__':
     help='Path to the replay buffer to load')
   args = parser.parse_args()
 
-  # config = BlockReachingConfig(equivariant=True, vision_size=128, results_path=args.results_path)
-  config = BlockPickingConfig(equivariant=True, vision_size=128, results_path=args.results_path)
+  config = TASK_CONFIGS[args.task](equivariant=True, vision_size=128, encoder=args.encoder, results_path=args.results_path)
 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
-  train(config, args.checkpoint, args.buffer)
+  train(args.task, config, args.checkpoint, args.buffer)
   ray.shutdown()

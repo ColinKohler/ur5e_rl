@@ -13,7 +13,13 @@ class BlockReachingEnv(BaseEnv):
     self.max_steps = 50
 
   def getBlockPose(self):
-    return utils.convertTfToPose(self.tf_proxy.lookupTransform('base_link', 'block'))
+    try:
+      pose = utils.convertTfToPose(self.tf_proxy.lookupTransform('base_link', 'block'))
+    except:
+      input('Block not detected. Please place block back within workspace.')
+      pose = utils.convertTfToPose(self.tf_proxy.lookupTransform('base_link', 'block'))
+
+    return pose
 
   def resetWorkspace(self):
     # Move arm out side of workspace
@@ -46,10 +52,10 @@ class BlockReachingEnv(BaseEnv):
     self.ur5e.place(self.block_pose)
     self.ur5e.moveToHome()
 
-  def checkTermination(self, obs):
+  def checkTermination(self):
     return super().checkTermination() or self.isGripperNearBlock()
 
-  def getReward(self, obs):
+  def getReward(self):
     return float(self.isGripperNearBlock())
 
   def isGripperNearBlock(self):
