@@ -199,6 +199,7 @@ class UR5e(object):
   def sendGripperCmd(self, p):
     ''' Send a position command to the gripper. '''
     self.gripper.setPosition(p)
+    self.gripper.waitUntilNotMoving()
 
   def getGripperState(self):
     ''' Get the current state of the gripper. '''

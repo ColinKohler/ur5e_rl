@@ -11,11 +11,11 @@ class BasePlanner(object):
 
   def getNextActionToCurrentTarget(self):
     x, y, z, r = self.getActionByGoalPose(self.current_target[0], self.current_target[1])
-    if np.all(np.abs([x, y, z]) < self.dpos) and np.abs(r) < self.drot:
+    if np.all(np.abs([x, y, z]) < self.dpos):# and np.abs(r) < self.drot:
       primitive = 0 if self.current_target[2] == 0 else 1
       self.current_target = None
     else:
-      primitive = 1 #if not self.env.ur5e.gripper.isClosed() else 1
+      primitive = 1 if not self.env.is_holding else 0
     return np.array([primitive, x, y, z, r])
 
   def getActionByGoalPose(self, goal_pos, goal_rot):

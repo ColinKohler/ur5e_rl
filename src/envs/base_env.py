@@ -29,6 +29,7 @@ class BaseEnv(object):
     self.force_sensor = ForceSensor(self.force_obs_len, self.tf_proxy)
 
     self.num_steps = 0
+    self.is_holding = False
     self.prev_poses = deque(maxlen=5)
 
   def reset(self):
@@ -38,18 +39,23 @@ class BaseEnv(object):
     self.force_sensor.reset()
 
     self.num_steps = 0
+    self.is_holding = False
     self.prev_poses = deque(maxlen=5)
     self.current_pose = self.ur5e.getEEPose()
     self.prev_poses.append(self.current_pose.getPosition())
 
-    return self.getObservation()
+    self.obs = self.getObservation()
+    return self.obs
 
   def step(self, action):
     p, x, y, z, rz = action
 
     target_pose = self.getActionPose(action)
     did_move = self.ur5e.moveToPose(target_pose)
+    prev_state = self.ur5e.getGripperState()
     self.ur5e.sendGripperCmd(p)
+    new_state = self.ur5e.getGripperState()
+    self.is_holding =  p < prev_state and p < new_state
     self.num_steps += 1
 
     self.ur5e.waitUntilNotMoving()

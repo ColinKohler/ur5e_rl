@@ -13,16 +13,32 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 from src.envs.block_reaching_env import BlockReachingEnv
+from src.envs.block_picking_env import BlockPickingEnv
 from src.planners.block_reaching_planner import BlockReachingPlanner
+from src.planners.block_picking_planner import BlockPickingPlanner
+from configs import *
 
 from svfl.replay_buffer import ReplayBuffer
 from svfl.shared_storage import SharedStorage
 from svfl.data_generator import EpisodeHistory
 from svfl.trainer import Trainer
 
-from configs import *
+TASK_CONFIGS = {
+  'block_reaching' : BlockReachingConfig,
+  'block_picking' : BlockPickingConfig,
+}
 
-def collectData(config, num_expert_eps):
+TASKS = {
+  'block_reaching' : BlockReachingEnv,
+  'block_picking' : BlockPickingEnv,
+}
+
+PLANNERS = {
+  'block_reaching' : BlockReachingPlanner,
+  'block_picking' : BlockPickingPlanner
+}
+
+def collectData(task, config, num_expert_eps):
   checkpoint = {
     'weights' : None,
     'optimizer_state' : None,
@@ -43,8 +59,8 @@ def collectData(config, num_expert_eps):
   )
   trainer = Trainer.options(num_cpus=0, num_gpus=0.0).remote(checkpoint, config)
 
-  env = BlockReachingEnv(config)
-  planner = BlockReachingPlanner(env, config)
+  env = TASKS[task](config)
+  planner = PLANNERS[task](env, config)
   time.sleep(1)
 
   num_eps = 0
@@ -63,7 +79,6 @@ def collectData(config, num_expert_eps):
       obs, reward, done = env.step(action.squeeze().tolist())
       value = 0
 
-      #p = 12
       #max_force = 10
       #norm_force = np.clip(obs[1], -max_force, max_force) / max_force
       #fig, ax = plt.subplots(nrows=1, ncols=3)
@@ -108,8 +123,8 @@ if __name__ == '__main__':
     help='Path to save results & logs to while training.')
   args = parser.parse_args()
 
-  config = BlockReachingConfig(equivariant=True, vision_size=128, results_path=args.results_path)
+  config = TASK_CONFIGS[args.task](equivariant=True, vision_size=128, results_path=args.results_path)
 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
-  collectData(config, args.num_eps)
+  collectData(args.task, config, args.num_eps)
   ray.shutdown()

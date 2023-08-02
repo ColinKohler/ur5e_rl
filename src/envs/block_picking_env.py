@@ -11,8 +11,8 @@ class BlockPickingEnv(BaseEnv):
   def __init__(self, config):
     super().__init__(config)
     self.max_steps = 50
-    self.pick_height = 0.2
-    self.hold_force_th = 0.0
+    self.pick_height = 0.3
+    self.hold_force_th = 100.0
 
   def getBlockPose(self):
     try:
@@ -34,7 +34,7 @@ class BlockPickingEnv(BaseEnv):
     self.block_pose = Pose(*new_block_pos, -0.5, -0.5, 0.5, -0.5)
 
     # Pick block if not holding
-    if not self.env.isHolding():
+    if not self.is_holding:
       # Move arm out side of workspace
       self.ur5e.moveToHome()
       self.ur5e.moveToOffsetHome()
@@ -62,9 +62,4 @@ class BlockPickingEnv(BaseEnv):
 
   def getReward(self):
     gripper_z = self.current_pose.getPosition()[-1]
-    return float(self.isHoldingBlock() and gripper_z > self.pick_height)
-
-  def isHoldingBlock(self):
-    force = self.obs[1]
-    z_force = force[:,2][:10]
-    return np.mean(z_force) > self.hold_force_th
+    return float(self.is_holding and gripper_z > self.pick_height)
