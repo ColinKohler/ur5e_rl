@@ -10,7 +10,7 @@ class Gripper(object):
     p_min (float): The min joint angle for the gripper.
     p_max (float): The max joint angle for the gripper.
   '''
-  def __init__(self, p_min=0, p_max=255):
+  def __init__(self, p_min=0, p_max=225):
     self.sub = rospy.Subscriber(
       'Robotiq2FGripperRobotInput',
       gripperStatus,
@@ -97,7 +97,3 @@ class Gripper(object):
       if prev_pos == curr_pos:
         return
       prev_pos = curr_pos
-  
-  # status not giving gripper force rFR or rFO
-  def getForce(self):
-    return self.status

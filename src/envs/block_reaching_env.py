@@ -10,7 +10,6 @@ from src.utils import Pose
 class BlockReachingEnv(BaseEnv):
   def __init__(self, config):
     super().__init__(config)
-    self.max_steps = 50
 
   def getBlockPose(self):
     try:

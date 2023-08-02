@@ -21,7 +21,7 @@ class BlockPickingPlanner(BasePlanner):
     grasp_pos = copy.copy(block_pos)
     grasp_pos[0] += npr.uniform(-0.01, 0.01)
     grasp_pos[1] += npr.uniform(-0.01, 0.01)
-    grasp_pos[2] += npr.uniform(-0.02, 0.01) + self.env.ur5e.gripper_offset
+    grasp_pos[2] += npr.uniform(-0.01, 0.03) + self.env.ur5e.gripper_offset
     grasp_rot = block_rot
 
     post_grasp_pos = copy.copy(block_pos)

@@ -10,8 +10,7 @@ from src.utils import Pose
 class BlockPickingEnv(BaseEnv):
   def __init__(self, config):
     super().__init__(config)
-    self.max_steps = 50
-    self.pick_height = 0.3
+    self.pick_height = 0.25
     self.hold_force_th = 100.0
 
   def getBlockPose(self):

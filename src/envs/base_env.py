@@ -54,13 +54,15 @@ class BaseEnv(object):
     did_move = self.ur5e.moveToPose(target_pose)
     prev_state = self.ur5e.getGripperState()
     self.ur5e.sendGripperCmd(p)
-    new_state = self.ur5e.getGripperState()
-    self.is_holding =  p < prev_state and p < new_state
     self.num_steps += 1
 
     self.ur5e.waitUntilNotMoving()
     self.current_pose = self.ur5e.getEEPose()
     self.prev_poses.append(self.current_pose.getPosition())
+    new_state = self.ur5e.getGripperState()
+    self.is_holding = new_state > 0.1 and p < prev_state and np.abs(new_state - p) > 0.1
+    #print('o: {}, p: {}, n: {}'.format(prev_state, p, new_state))
+    #print(self.is_holding)
 
     self.obs = self.getObservation()
     done = self.checkTermination()
@@ -129,7 +131,7 @@ class BaseEnv(object):
   def checkTermination(self):
     prev_pose_diff = np.linalg.norm(np.array(self.prev_poses) - self.prev_poses[0], axis=1)
     is_stuck = np.all(prev_pose_diff <= 5e-3) and len(self.prev_poses) == 5
-    is_max_step = self.num_steps >= self.max_steps
+    is_max_step = self.num_steps >= self.config.max_steps
     return is_max_step or is_stuck
 
   def getReward(self):
