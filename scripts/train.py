@@ -83,19 +83,20 @@ def train(task, config, checkpoint_path, buffer_path):
   # Load checkpoint/replay buffer
   log_path = None
   if checkpoint_path:
-    checkpoint_path = os.path.join(config.root_path,
-                                   task,
-                                   checkpoint_path,
-                                   'model.checkpoint')
     log_path =  os.path.join(config.root_path,
                              task,
                              checkpoint_path,
                              'log_data.pkl')
+    checkpoint_path = os.path.join(config.root_path,
+                                   task,
+                                   checkpoint_path,
+                                   'model.checkpoint')
   if buffer_path:
     buffer_path = os.path.join(config.root_path,
                                task,
                                buffer_path,
                                'replay_buffer.pkl')
+
   checkpoint, data_buffer = load(
     checkpoint,
     checkpoint_path=checkpoint_path,

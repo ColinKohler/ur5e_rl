@@ -35,7 +35,7 @@ class UR5e(object):
     self.joint_reorder = [2,1,0,3,4,5]
 
     self.home_joint_pos = (np.pi/180)*np.array([76., -84., 90., -96., -90., 165.])
-    self.home_pose = Pose(0, 0.55, 0.3, 0.5, 0.5, -0.5, 0.5)
+    self.home_pose = Pose(0, 0.55, 0.25, 0.5, 0.5, -0.5, 0.5)
     self.offset_home_joint_pos = (np.pi/180)*np.array([120., -84., 90., -96., -90., 165.])
     self.max_joint_disp = np.array([0.2, 0.2, 0.2, 0.4, 0.4, 0.6])
 

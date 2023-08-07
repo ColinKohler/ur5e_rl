@@ -64,10 +64,11 @@ def collectData(task, config, num_expert_eps):
   time.sleep(1)
 
   num_eps = 0
+  successful_eps = 0
   print('Generating {} episodes of expert data...'.format(num_expert_eps))
 
   pbar = tqdm(total=num_expert_eps)
-  for expert_eps in range(num_expert_eps):
+  while successful_eps < num_expert_eps:
     obs = env.reset()
     eps_history = EpisodeHistory(is_expert=True)
     eps_history.logStep(obs[0], obs[1], obs[2], np.array([0] * config.action_dim), 0, 0, 0, config.max_force)
@@ -105,9 +106,11 @@ def collectData(task, config, num_expert_eps):
         config.max_force
       )
 
-    # Save expert episode to buffer
-    replay_buffer.add.remote(eps_history, shared_storage)
-    pbar.update(1)
+    # Save expert episode to buffer only if we succeeded
+    if reward == 1:
+      replay_buffer.add.remote(eps_history, shared_storage)
+      successful_eps += 1
+      pbar.update(1)
 
   buffer = ray.get(replay_buffer.getBuffer.remote())
   ray.get(shared_storage.saveReplayBuffer.remote(copy.copy(buffer)))

@@ -10,7 +10,7 @@ from src.utils import Pose
 class BlockPickingEnv(BaseEnv):
   def __init__(self, config):
     super().__init__(config)
-    self.pick_height = 0.25
+    self.pick_height = 0.20
     self.hold_force_th = 100.0
 
   def getBlockPose(self):
@@ -27,7 +27,7 @@ class BlockPickingEnv(BaseEnv):
     new_block_pos = [
       npr.uniform(self.workspace[0,0]+0.05, self.workspace[0,1]-0.05),
       npr.uniform(self.workspace[1,0]+0.05, self.workspace[1,1]-0.05),
-      0.06
+      0.04
     ]
     # TODO: Generate random orientation for block
     self.block_pose = Pose(*new_block_pos, -0.5, -0.5, 0.5, -0.5)

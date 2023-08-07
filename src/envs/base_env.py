@@ -48,7 +48,8 @@ class BaseEnv(object):
     return self.obs
 
   def step(self, action):
-    p, x, y, z, rz = action
+    #p, x, y, z, rz = action
+    p, x, y, z = action
 
     target_pose = self.getActionPose(action)
     did_move = self.ur5e.moveToPose(target_pose)
@@ -60,7 +61,7 @@ class BaseEnv(object):
     self.current_pose = self.ur5e.getEEPose()
     self.prev_poses.append(self.current_pose.getPosition())
     new_state = self.ur5e.getGripperState()
-    self.is_holding = new_state > 0.1 and p < prev_state and np.abs(new_state - p) > 0.1
+    self.is_holding = new_state > 0.1 and p < prev_state and np.abs(new_state - p) > 0.2
     #print('o: {}, p: {}, n: {}'.format(prev_state, p, new_state))
     #print(self.is_holding)
 
@@ -74,16 +75,17 @@ class BaseEnv(object):
     return self.obs, reward, done
 
   def getActionPose(self, action):
-    p, x, y, z, rz = action
+    #p, x, y, z, rz = action
+    p, x, y, z = action
     current_pos = self.current_pose.getPosition()
     current_rot = np.array(self.current_pose.getOrientationQuaternion())
     current_rot = np.quaternion(*current_rot[[3,0,1,2]])
 
     pos = np.array(current_pos) + np.array([x,y,z])
-    delta_rot = np.array(tf.transformations.quaternion_from_euler(0, 0, rz))
-    delta_rot = np.quaternion(*delta_rot[[3,0,1,2]])
-    rot = quaternion.as_float_array(delta_rot * current_rot)
-    rot = rot[[1,2,3,0]]
+    #delta_rot = np.array(tf.transformations.quaternion_from_euler(0, 0, rz))
+    #delta_rot = np.quaternion(*delta_rot[[3,0,1,2]])
+    #rot = quaternion.as_float_array(delta_rot * current_rot)
+    #rot = rot[[1,2,3,0]]
     rot = [0.5, 0.5, -0.5, 0.5]
 
     pos[0] = np.clip(pos[0], self.workspace[0, 0], self.workspace[0, 1])
