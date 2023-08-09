@@ -46,8 +46,6 @@ class ForceSensor(object):
 
   def getObservation(self):
     obs = np.array(self.force_history[-self.force_obs_len:])
-    #obs[:] -= self.initial_force
-    obs[:,2] -= self.initial_force[2]
-    obs[:,5] -= self.initial_force[5]
+    obs[:] -= self.initial_force
 
     return obs

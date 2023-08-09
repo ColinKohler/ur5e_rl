@@ -13,13 +13,25 @@ from tqdm import tqdm
 import pickle
 
 from src.envs.block_reaching_env import BlockReachingEnv
+from src.envs.block_picking_env import BlockPickingEnv
 from configs import *
 
 from svfl.agent import Agent
 
 from bulletarm_baselines.logger.logger import RayLogger
 
-def test(config, checkpoint):
+TASK_CONFIGS = {
+  'block_reaching' : BlockReachingConfig,
+  'block_picking' : BlockPickingConfig,
+}
+
+TASKS = {
+  'block_reaching' : BlockReachingEnv,
+  'block_picking' : BlockPickingEnv,
+}
+
+
+def test(task, config, checkpoint):
   # Load model
   checkpoint_path = os.path.join(config.results_path,
                                  'model.checkpoint')
@@ -30,7 +42,7 @@ def test(config, checkpoint):
     print('Checkpoint not found at {}'.format(checkpoint_path))
     sys.exit()
 
-  env = BlockReachingEnv(config)
+  env = TASKS[task](config)
   time.sleep(1)
 
   device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -71,8 +83,8 @@ if __name__ == '__main__':
 
   args = parser.parse_args()
 
-  config = BlockReachingConfig(equivariant=True, vision_size=128, results_path=args.checkpoint)
+  config = TASK_CONFIGS[args.task](equivariant=True, vision_size=128, encoder=args.encoder, results_path=args.checkpoint)
 
   ray.init(num_gpus=config.num_gpus, ignore_reinit_error=True)
-  test(config, args.checkpoint)
+  test(args.task, config, args.checkpoint)
   ray.shutdown()

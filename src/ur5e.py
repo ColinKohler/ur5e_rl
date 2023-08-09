@@ -43,8 +43,8 @@ class UR5e(object):
     self.gripper.reset()
     self.gripper.activate()
 
-    self.pick_offset = 0.1
-    self.place_offset = 0.1
+    self.pick_offset = 0.05
+    self.place_offset = 0.05
     self.gripper_offset = 0.10
 
     self.tf_proxy = TFProxy()

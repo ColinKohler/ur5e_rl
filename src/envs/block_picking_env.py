@@ -11,7 +11,6 @@ class BlockPickingEnv(BaseEnv):
   def __init__(self, config):
     super().__init__(config)
     self.pick_height = 0.20
-    self.hold_force_th = 100.0
 
   def getBlockPose(self):
     try:
@@ -20,6 +19,7 @@ class BlockPickingEnv(BaseEnv):
       input('Block not detected. Please place block back within workspace.')
       pose = utils.convertTfToPose(self.tf_proxy.lookupTransform('base_link', 'block'))
 
+    pose.pos[2] = 0.055
     return pose
 
   def resetWorkspace(self):
@@ -27,7 +27,7 @@ class BlockPickingEnv(BaseEnv):
     new_block_pos = [
       npr.uniform(self.workspace[0,0]+0.05, self.workspace[0,1]-0.05),
       npr.uniform(self.workspace[1,0]+0.05, self.workspace[1,1]-0.05),
-      0.04
+      0.055
     ]
     # TODO: Generate random orientation for block
     self.block_pose = Pose(*new_block_pos, -0.5, -0.5, 0.5, -0.5)
